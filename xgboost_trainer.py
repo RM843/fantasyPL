@@ -40,7 +40,8 @@ def create_dmatrix(X_train, y_train, X_test, y_test):
     dtest = xgb.DMatrix(X_test, label=y_test,enable_categorical=True)
     return dtrain, dtest
 
-def train_xgboost_model(dtrain, params, num_round=100):
+def train_xgboost_model(dtrain,dtest,objective,dholdout=None, early_stopping=10, boost_rounds=100000,verbose=True,
+                         ):
     """
     Trains an XGBoost model.
 
@@ -52,7 +53,20 @@ def train_xgboost_model(dtrain, params, num_round=100):
     Returns:
     - model: Trained XGBoost model
     """
-    return xgb.train(params, dtrain, num_round)
+    evals_result = dict()
+
+    return  xgb.train({"objective":objective},
+                              dtrain=dtrain,
+                              evals=[(dtrain, "Train"),
+                                     (dholdout, "Holdout"),
+                                     (dtest, "Test")] if dholdout is not None else [(dtrain, "Train"),
+                                                                                    (dtest, "Test")],
+                              evals_result=evals_result,
+                              num_boost_round=boost_rounds,
+                              early_stopping_rounds=early_stopping,
+                              verbose_eval=verbose
+                              )
+
 
 def predict(model, dtest):
     """
@@ -65,6 +79,8 @@ def predict(model, dtest):
     Returns:
     - y_pred: Predicted target values
     """
+    if isinstance(dtest, pd.DataFrame):
+        dtest = xgb.DMatrix(data=dtest[model.feature_names], enable_categorical=True)
     return model.predict(dtest)
 
 def evaluate_model(y_test, y_pred):
@@ -80,7 +96,36 @@ def evaluate_model(y_test, y_pred):
     """
     return np.sqrt(mean_squared_error(y_test, y_pred))
 
-def get_xgboost_model(X, y):
+
+def _get_folds(no_folds, df):
+    """
+    Generate train-test splits for each fold and store them in a dictionary.
+
+    Args:
+        no_folds (int): The number of folds to split the dataset into.
+        df (DataFrame): The original DataFrame containing the entire dataset.
+
+    Returns:
+        dict: A dictionary where each key is an integer index representing the
+              fold number and the value is another dictionary with keys "train"
+              and "test". The "train" key contains the training data for the
+              respective fold, and the "test" key contains the testing data.
+    """
+    # Split df into no_folds different arrays
+    folds = np.array_split(df, no_folds)
+
+    folds_list = {}
+    # For all folds
+    for i, test in enumerate(folds):
+        # Get train test splits
+        df['split'] = 'train'
+        df.loc[test.index, 'split'] = 'test'
+        train = df[df['split'] == 'train']
+        folds_list[i] = {"train": train, "test": test}
+    return folds_list
+
+
+def get_xgboost_model(df,features,target,seed=42,no_folds=3):
     """
     Main function to execute the XGBoost linear regression pipeline.
 
@@ -88,26 +133,35 @@ def get_xgboost_model(X, y):
     - X: Features matrix
     - y: Target vector
     """
-    # Prepare data
-    X_train, X_test, y_train, y_test = prepare_data(X, y)
+    # Shuffle the data into a random order
+    shuffled = df.sample(frac=1, random_state=seed)
 
-    # Create DMatrix
-    dtrain, dtest = create_dmatrix(X_train, y_train, X_test, y_test)
 
-    # Define parameters
-    params = {
-        'objective': 'reg:squarederror',  # Regression with squared error
-        'booster': 'gblinear',             # Use linear booster
-        'eval_metric': 'rmse'              # Evaluation metric: root mean squared error
-    }
+
+    folds_list = _get_folds(no_folds,shuffled)
+
+
+
+
+    train,test = folds_list[0]["train"],folds_list[0]["test"]
+
+    dtrain = xgb.DMatrix(data=train[features], label=train[target], enable_categorical=True)
+    dtest = xgb.DMatrix(data=test[features], label=test[target], enable_categorical=True)
+
+    # # Define parameters
+    # params = {
+    #     'objective': 'reg:squarederror',  # Regression with squared error
+    #     'booster': 'gblinear',             # Use linear booster
+    #     'eval_metric': 'rmse'              # Evaluation metric: root mean squared error
+    # }
 
     # Train model
-    model = train_xgboost_model(dtrain, params)
+    model = train_xgboost_model(dtrain=dtrain,dtest=dtest,objective='reg:squarederror')
 
     # Predict
-    y_pred = predict(model, dtest)
+    y_pred = predict(model=model,dtest= dtest)
 
     # Evaluate
-    rmse = evaluate_model(y_test, y_pred)
+    rmse = evaluate_model(test[target], y_pred)
     print(f"Root Mean Squared Error: {rmse}")
     return model
