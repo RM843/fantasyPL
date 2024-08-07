@@ -1,4 +1,4 @@
-from itertools import combinations
+from itertools import combinations, product
 
 # Example Data
 ALL_OPTIONS = ['A', 'B', 'C', 'D']
@@ -12,110 +12,7 @@ scores = {
 initial_selection_size = 2  # Size of the initial selection
 
 
-def calculate_max_score(initial_selection, scores):
-    """
-    Calculates the maximum score achievable given an initial selection of options,
-    the list of all options, their respective scores per round, and the total number of rounds.
 
-    This function uses a dynamic programming approach to iteratively build up the maximum
-    score for each possible selection of options at each round, considering the constraint
-    that only one option can be changed between rounds.
-
-    Parameters:
-    - initial_selection: tuple, the starting set of options.
-    - scores: dict, expected scores for each option per round.
-
-    Returns:
-    - max_score: int, the maximum score achievable with the given initial selection.
-
-    Algorithm:
-    1. Initialize the DP table.
-    2. Set the initial selection's score in the DP table.
-    3. For each round:
-        a. For each selection in the current round's DP table:
-            i. Calculate the current score.
-            ii. Generate new selections by replacing each option with another option not in the current selection.
-            iii. Calculate the new score for each new selection.
-            iv. Update the DP table for the next round with the new scores.
-    4. Extract the maximum score from the last round's DP table.
-
-
-    Return the maximum score in dp[rounds]
-    ```
-    """
-    # Initialize DP table
-    dp = [{} for _ in range(ROUNDS )]
-    dp[0][tuple(initial_selection)] = (sum(scores[opt][0] for opt in initial_selection),initial_selection)
-
-    # DP Transition
-    for round_index in range(ROUNDS-1):
-        next_round_index = round_index+1
-        for selection in dp[round_index]:
-            current_score = dp[round_index][selection][0]
-            for i in range(len(selection)):
-                # score for no changes
-                next_round_score = sum(scores[opt][next_round_index] for opt in selection)
-                new_score = current_score + next_round_score
-                dp[next_round_index][selection] = (new_score, selection)
-                for new_option in ALL_OPTIONS:
-                    if new_option not in selection:
-                        new_selection = list(selection)
-                        new_selection[i] = new_option
-                        new_selection = tuple(new_selection)
-                        # is_final_round= round_index == ROUNDS-1
-                        # if not is_final_round:
-                        next_round_score =  sum(scores[opt][next_round_index] for opt in new_selection)
-                        new_score = current_score + next_round_score
-                        # else:
-                        #     new_score = current_score
-
-                        if new_selection not in dp[next_round_index]:
-                            dp[next_round_index][new_selection] = (new_score,new_selection)
-                        else:
-                            dp[next_round_index][new_selection] = max(dp[next_round_index][new_selection], (new_score, new_selection), key=lambda x: x[0])
-
-        # Extract Result
-    max_score = -float('inf')
-    best_end_selection  = None
-    for selection ,  (score, _) in dp[-1].items():
-        if score > max_score:
-            max_score = score
-            best_end_selection  = selection 
-
-    # Backtrack to find the sequence of selections
-    best_sequence = []
-    for j in range(ROUNDS-1, 0, -1):
-        best_sequence.append(best_end_selection )
-        best_end_selection = dp[j][best_end_selection][1]
-    best_sequence.append(initial_selection)
-    best_sequence.reverse()
-
-    return max_score, best_sequence
-
-
-#
-# # Generate all possible initial selections
-# all_initial_selections = list(combinations(ALL_OPTIONS, initial_selection_size))
-#
-# # Initialize variables to track the best selection and score
-# best_initial_selection = None
-# best_score = -float('inf')
-# best_sequence = []
-#
-# # Evaluate each initial selection
-# for initial_selection in all_initial_selections:
-#     score, sequence = calculate_max_score(initial_selection, scores)
-#     if score > best_score:
-#         best_score = score
-#         best_initial_selection = initial_selection
-#         best_sequence = sequence
-#
-# # Output the best initial selection, the maximum score, and the sequence of selections
-# print("Best initial selection:", best_initial_selection)
-# print("Maximum score:", best_score)
-# print("Sequence of selections per round:")
-# for round_idx, selection in enumerate(best_sequence):
-#     print(f"Round {round_idx}: {selection}")
 
 def is_legal_team():
 
@@ -123,46 +20,107 @@ def is_legal_team():
     max_teams()
     positions_fit()
 
-def value_iteration(initial_states, get_allowed_actions, transition_model, reward_function, gamma=1, epsilon=0.0001):
+def get_best_action(state,V,gamma,get_allowed_actions, transition_model, reward_function):
+
+    available_actions = get_allowed_actions(state)
+    action_values = []
+    for action in available_actions:
+
+        next_state = transition_model(state, action)
+        reward = reward_function(next_state)
+        next_state_value = V.get(next_state, 0)
+        action_values.append(gamma * next_state_value + reward)
+
+    best_action_value = max(action_values)
+
+    best_action = available_actions[action_values.index(best_action_value)]
+    return best_action, best_action_value
+def value_iteration(states, get_allowed_actions, transition_model, reward_function, gamma=1, epsilon=0.0001):
 
     V = {}
-    for initial_state in initial_states:
-        state = initial_state
-        while True:
+    while True:
+        deltas=0
+        for state in states:
+
+
             delta = 0
-
             # current value of state
-            v = V.get(state,0)
-            available_actions =get_allowed_actions(state)
-            action_values = []
-            for action in available_actions:
-                reward = reward_function(state,action)
-                next_state,_ = transition_model(state, action)
-                next_state_value = V.get(next_state,0)
-                action_values.append(gamma*next_state_value+reward)
+            v = V.get(state, 0)
+            best_action,best_action_value = get_best_action(state, V, gamma,get_allowed_actions, transition_model, reward_function)
+            V[state] = best_action_value
 
-            best_action_value = max(action_values)
-            v[state] = best_action_value
-            best_action = action_values.index(best_action_value)
-            state, end = transition_model(state, best_action)
             delta = max(delta, abs(v - V[state]))
-            if end:
-                break
-            # # # Check for convergence
-            # if delta < epsilon:
-            #     break
+            deltas+=delta
+
+
+        print("Deltas:",deltas)
+        # Check for convergence
+        if deltas == 0:
+            break
+
+    assert len(initial_states)*ROUNDS==len(V),f"""{len(initial_states)*(ROUNDS-1)} possible
+            states {len(V)} found"""
 
     # Extract optimal policy
-    # policy = {}
-    # for s in states:
-    #     policy[s] = max(actions,
-    #                     key=lambda a: sum(
-    #                         transition_model(s, a, s_next) *
-    #                         (reward_function(
-    #                             s, a, s_next) + gamma * V[s_next])
-    #                         for s_next in states))
-    return V
+    policy = {}
+    for s in states:
+        policy[s] = get_best_action(s,V,gamma,get_allowed_actions, transition_model, reward_function)
+    initial_state_scores = [(k,v) for k,v in V.items() if k[0]==0]
+    i = [v for (k,v) in initial_state_scores].index(max([v for (k,v) in initial_state_scores]))
 
-inital_states
+    return V,policy,initial_state_scores[i][0]
 
-value_iteration(states, get_allowed_actions, transition_model, reward_function
+def get_allowed_actions(state):
+    actions =[(-1,None)] # do nothing option
+    rnd, selection = state
+
+    for i,selct in enumerate(selection):
+        for opt in ALL_OPTIONS:
+            if opt not in selection:
+                actions.append((i,opt))
+    return actions
+
+def is_final(state):
+    rnd, selection = state
+    return rnd >= ROUNDS
+def transition_model(state,action):
+    rnd, selection = state
+    index_to_change, option =action
+
+    selection = [option if i==index_to_change else
+                      opt for i, opt in enumerate(selection)]
+    selection.sort()
+
+    return (rnd+1,tuple(selection))
+
+def reward_function(state):
+    rnd, selection = state
+
+    score = 0
+    for selct in selection:
+
+        score +=scores[selct][rnd-1]
+    return score
+
+
+initial_states = [x for x in list(combinations(ALL_OPTIONS, 2))]
+
+states = list(product(range(ROUNDS), initial_states))
+v,policy,best_initial_state = value_iteration(states=states,
+                get_allowed_actions=get_allowed_actions,
+                transition_model=transition_model,
+                reward_function=reward_function)
+
+state = best_initial_state
+strat = []
+while not is_final(state):
+    rnd,selection =state
+    action,value = policy[state]
+    if not rnd==0:
+
+        strat.append({"state":state,"action":action,"value":value})
+    state = transition_model(state,action)
+    if rnd==0:
+        strat.append({"state": (0,state[1]), "action": None, "value": value})
+
+print(v)
