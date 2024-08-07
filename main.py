@@ -34,4 +34,4 @@ for season, gw in all_gws:
     projections = pd.concat([projections,tmp])
 
 for season, gw in all_gws:
-print("here")
+    print("here")
