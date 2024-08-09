@@ -1,5 +1,6 @@
 from itertools import combinations, product
 
+from generic_code.policy_iteration import PolicyIteration
 from generic_code.value_iteration import ValueIteration
 from helper_methods import timing_decorator
 
@@ -22,10 +23,13 @@ class Example:
     def transition_model(self, state, action):
         rnd, selection = state
         index_to_change, option = action
+        if option is not None:
 
-        selection = [option if i == index_to_change else
-                     opt for i, opt in enumerate(selection)]
-        selection.sort()
+            selection = list(selection)
+            selection[index_to_change] = option
+            selection = tuple(selection)
+
+
         next_state = (rnd + 1, tuple(selection))
         if not self.is_legal_state(next_state):
             return False
@@ -35,6 +39,7 @@ class Example:
         rnd, selection = state
 
         score = 0
+
         for selct in selection:
             score += self.scores[selct][rnd - 1]
         return score
@@ -50,7 +55,7 @@ if __name__ == '__main__':
     ROUNDS = 5
     scores = {
         'A': {0: 2, 1: 6, 2: 5, 3: 6, 4: 40},
-        'B': {0: 6, 1: 5, 2: 6, 3: 5, 4: 6},
+        'B': {0: 9, 1: 5, 2: 6, 3: 5, 4: 6},
         'C': {0: 1, 1: 8, 2: 1, 3: 8, 4: 9},
         'D': {0: 8, 1: 7, 2: 8, 3: 7, 4: 8},
         'E': {0: 4, 1: 7, 2: 5, 3: 33, 4: 4}
@@ -59,9 +64,12 @@ if __name__ == '__main__':
     initial_selection_size = 2
     problem_obj = Example(ALL_OPTIONS, range(ROUNDS), scores, initial_selection_size)
 
-    # initial_states = [x for x in list(combinations(ALL_OPTIONS, initial_selection_size))]
-    #
-    # states = list(product(range(ROUNDS), initial_states))
-    Value_it = ValueIteration(problem_obj)
-    v, policy, strat = Value_it.value_iteration()
+    pi = PolicyIteration(problem_obj)
+    vi = ValueIteration(problem_obj)
+    v, policy, strat = pi.run()
+    v2, policy2, strat2 = vi.run()
+    assert strat==strat2
+    assert v==v2
+    assert policy.policy==policy2.policy
     print(strat)
+

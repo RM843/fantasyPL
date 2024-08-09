@@ -32,8 +32,3 @@ def list_folders(path):
     except PermissionError:
         print(f"Permission denied for path '{path}'.")
         return []
-
-# Example usage
-directory_path = '/path/to/your/directory'
-folders = list_folders(directory_path)
-print(f"Folders in '{directory_path}': {folders}")
