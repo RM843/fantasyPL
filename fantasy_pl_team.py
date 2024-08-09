@@ -1,4 +1,4 @@
-from optimal_policy import Example
+from tests.test_generic_code import Example
 
 
 class FantasyPL(Example):

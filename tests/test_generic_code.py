@@ -1,8 +1,5 @@
-from itertools import combinations, product
-
-from generic_code.policy_iteration import PolicyIteration
-from generic_code.value_iteration import ValueIteration
-from helper_methods import timing_decorator
+from fantasyPL.generic_code.policy_iteration import PolicyIteration
+from fantasyPL.generic_code.value_iteration import ValueIteration
 
 
 class Example:
@@ -44,12 +41,7 @@ class Example:
             score += self.scores[selct][rnd - 1]
         return score
 
-    # is_affordable()
-    # max_teams()
-    # positions_fit()
-
-
-if __name__ == '__main__':
+def check_policy_it_equals_value_it():
     # Example Data
     ALL_OPTIONS = ['A', 'B', 'C', 'D', "E"]
     ROUNDS = 5
@@ -68,8 +60,9 @@ if __name__ == '__main__':
     vi = ValueIteration(problem_obj)
     v, policy, strat = pi.run()
     v2, policy2, strat2 = vi.run()
-    assert strat==strat2
-    assert v==v2
-    assert policy.policy==policy2.policy
-    print(strat)
+    assert strat == strat2
+    assert v == v2
+    assert policy.policy == policy2.policy
 
+if __name__ == '__main__':
+    check_policy_it_equals_value_it()

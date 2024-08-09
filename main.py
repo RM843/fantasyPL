@@ -1,13 +1,12 @@
-from itertools import product, combinations
-
 import pandas as pd
 
 from build_team import get_top_players
+from fantasyPL.generic_code.policy_iteration import PolicyIteration
 from fantasy_pl_team import FantasyPL
-from generic_code.value_iteration import ValueIteration
+from fantasyPL.generic_code.value_iteration import ValueIteration
 from xgboost_trainer import get_xgboost_model, predict
 
-df = pd.read_csv("data/cleaned_merged_seasons.csv")
+df = pd.read_csv("fantasyPL/data/cleaned_merged_seasons.csv")
 # master_df =pd.DataFrame()
 # seasons = list_folders("data")
 # for season in seasons:
@@ -38,6 +37,8 @@ for season, gw in all_gws:
     projections = pd.concat([projections,tmp])
 
 for season, gw in all_gws:
+    season='2016-17'
+    gw=37
     players = df.loc[(df["GW"]==gw)&(df["season_x"]==season),"element"].to_list()
     scores = {}
     for player in players:
@@ -51,11 +52,11 @@ for season, gw in all_gws:
     scores = score_tmp.to_dict()
     total_rounds = df.loc[df["season_x"]==season,"GW"].max()
 
-    initial_selection_size = 15
+    initial_selection_size = 2
     fantasy_team_obj = FantasyPL(all_options=players, rounds= range(gw,total_rounds ), scores=scores, initial_selection_size=initial_selection_size)
     Value_it = ValueIteration(fantasy_team_obj)
 
-    v, policy, strat = Value_it.value_iteration()
+    v, policy, strat = Value_it.run()
     print(strat)
     assert len(players)==len(set(players))
     print("here")

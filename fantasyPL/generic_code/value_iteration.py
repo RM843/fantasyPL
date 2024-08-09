@@ -1,7 +1,8 @@
+from itertools import product
+
 from tqdm import tqdm
 
-from generic_code.reinforment_learning import PolicyOrValueIteration
-from helper_methods import combination_generator, timing_decorator
+from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration
 
 
 class ValueIteration(PolicyOrValueIteration):
@@ -27,30 +28,32 @@ class ValueIteration(PolicyOrValueIteration):
                 - policy (dict): The optimal policy mapping each state to its best action.
                 - strat (list): The strategy derived from the optimal policy.
         """
-
+        states = [x for x in self.get_selections_generator(self.problem_obj.all_options,
+                                                           self.problem_obj.initial_selection_size)]
+        states = [x for x in product(self.problem_obj.rounds, states) if self.problem_obj.is_legal_state(x)]
         while True:
+
             deltas = 0  # Total change in value across all states in this iteration
-            for selection in tqdm(self.get_selections_generator(self.problem_obj.all_options,
-                                                                self.problem_obj.initial_selection_size)):
-                for rnd in self.problem_obj.rounds:
+            for state in tqdm(states):
+                # for rnd in self.problem_obj.rounds:
 
-                    def do_loop():
+                def do_loop():
 
-                        state = (rnd, selection)
+                    # state = (rnd, selection)
 
-                        if not self.problem_obj.is_legal_state(state):
-                            return 0
-                        self.states_superset.append(state)
+                    # if not self.problem_obj.is_legal_state(state):
+                    #     return 0
+                    self.states_superset.append(state)
 
-                        delta = 0  # Change in value for the current state
-                        v = self.V.get(state, 0)  # Current value of the state
-                        best_action, best_action_value = self.get_best_action(state, gamma)
-                        self.V[state] = best_action_value  # Update the state value with the best action value
-                        # Calculate the maximum change in value for the current state
-                        return max(delta, abs(v - self.V[state]))
+                    delta = 0  # Change in value for the current state
+                    v = self.V.get(state, 0)  # Current value of the state
+                    best_action, best_action_value = self.get_best_action(state, gamma)
+                    self.V[state] = best_action_value  # Update the state value with the best action value
+                    # Calculate the maximum change in value for the current state
+                    return max(delta, abs(v - self.V[state]))
 
-                    # Accumulate the changes across all states
-                    deltas += do_loop()
+                # Accumulate the changes across all states
+                deltas += do_loop()
 
             print("Deltas:", deltas)
 
@@ -63,6 +66,7 @@ class ValueIteration(PolicyOrValueIteration):
             f"""{len(set(self.states_superset))} possible
                            states {len(self.V)} found"""
 
+        print("Getting Policy")
         # Extract the optimal policy based on the final value function
-        for s in self.states_superset:
+        for s in tqdm(states):
             self.policy.policy[s] = self.get_best_action(s, gamma)

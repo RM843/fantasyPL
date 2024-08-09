@@ -1,8 +1,6 @@
 import random
 from abc import ABC, abstractmethod
 
-from tqdm import tqdm
-
 from helper_methods import combination_generator, timing_decorator
 
 
@@ -111,7 +109,7 @@ class PolicyOrValueIteration(ABC):
         self.get_strat()  # Derive the strategy from the optimal policy
         return self.V, self.policy, self.strat
 
-    @timing_decorator
+    # @timing_decorator
     def get_best_action(self, state: tuple, gamma: float) -> tuple:
         """
         Determine the best action to take in a given state based on the value iteration process.
@@ -238,7 +236,7 @@ class PolicyOrValueIteration(ABC):
         assert self.algo_run, "Algorithm has not been run. Cannot determine the best initial state."
 
         # Filter out states where the round number is 0 (initial states) and get their values
-        initial_state_scores = [(k, v) for k, v in self.V.items() if k[0] == 0]
+        initial_state_scores = [(k, v) for k, v in self.V.items() if k[0] == self.problem_obj.rounds.start]
 
         # Extract the values from the filtered states
         values = [v for (k, v) in initial_state_scores]
