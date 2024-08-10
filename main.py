@@ -39,7 +39,8 @@ for season, gw in all_gws:
 for season, gw in all_gws:
     season='2016-17'
     gw=37
-    players = df.loc[(df["GW"]==gw)&(df["season_x"]==season),"element"].to_list()
+    players =list(df.loc[(df["GW"] == gw) & (df["season_x"] == season), "element"].unique())
+    assert len(players) == len(set(players))
     scores = {}
     for player in players:
         tmp = df.loc[(df["element"] == player) & (df["GW"] >= gw) & (df["season_x"] == season), ["GW", "prediction"]]
@@ -54,9 +55,9 @@ for season, gw in all_gws:
 
     initial_selection_size = 2
     fantasy_team_obj = FantasyPL(all_options=players, rounds= range(gw,total_rounds ), scores=scores, initial_selection_size=initial_selection_size)
-    Value_it = ValueIteration(fantasy_team_obj)
+    Value_it = PolicyIteration(fantasy_team_obj)
 
     v, policy, strat = Value_it.run()
     print(strat)
-    assert len(players)==len(set(players))
+    break
     print("here")

@@ -1,5 +1,7 @@
 import random
 from abc import ABC, abstractmethod
+from itertools import product
+from typing import List
 
 from helper_methods import combination_generator, timing_decorator
 
@@ -14,7 +16,8 @@ class Policy:
             self.policy[state] = random.choice(self.get_allowed_actions(state)),None
         return  self.policy[state]
 
-
+DO_NOTHING=(-1, None)
+INITIAL_STATE="INITIAL"
 class PolicyOrValueIteration(ABC):
     """
     Implements the Value Iteration algorithm for solving Markov Decision Processes (MDPs).
@@ -88,7 +91,10 @@ class PolicyOrValueIteration(ABC):
     def get_selections_generator(self, options, selection_size):
 
         return combination_generator(options, selection_size)
-
+    def get_states_superset(self):
+        self.selections_superset = [x for x in self.get_selections_generator(self.problem_obj.all_options,
+                                                           self.problem_obj.initial_selection_size)]
+        return  [INITIAL_STATE] +[x for x in product(self.problem_obj.rounds,  self.selections_superset ) if self.problem_obj.is_legal_state(x)]
     @timing_decorator
     def run(self, gamma: float = 1.0, epsilon: float = 0.0001) -> tuple:
         """
@@ -106,8 +112,10 @@ class PolicyOrValueIteration(ABC):
         """
         self.algorithm(gamma=gamma,epsilon=epsilon)
         self.algo_run = True
-        self.get_strat()  # Derive the strategy from the optimal policy
-        return self.V, self.policy, self.strat
+        self.strat = self.get_strat()  # Derive the strategy from the optimal policy
+        final_score = self.eval_strat()
+        print("Final Best Score:", final_score)
+        return self.V, self.policy, self.strat ,final_score
 
     # @timing_decorator
     def get_best_action(self, state: tuple, gamma: float) -> tuple:
@@ -158,9 +166,13 @@ class PolicyOrValueIteration(ABC):
             float: The calculated value of taking the specified action in the
                    given state.
         """
-
-        next_state = self.problem_obj.transition_model(state, action)  # Determine the next state
-        reward = self.problem_obj.reward_function(next_state)  # Calculate the reward for the next state
+        is_initial_state = INITIAL_STATE==state
+        next_state = self.problem_obj.transition_model(state, action,start_state=is_initial_state)  # Determine the next state
+        # Calculate the reward for the next state
+        if is_initial_state:
+            reward = self.problem_obj.reward_function((self.problem_obj.rounds.start,action))
+        else:
+            reward = self.problem_obj.reward_function(next_state)
         next_state_value = self.V.get(next_state, 0)  # Get the value of the next state, defaulting to 0
         return gamma * next_state_value + reward
 
@@ -175,9 +187,14 @@ class PolicyOrValueIteration(ABC):
         Returns:
             bool: True if the action is allowed (i.e., leads to a legal next state), False otherwise.
         """
-
         # returns False if not allowed, so we check if it is false
-        return not not self.problem_obj.transition_model(state, action)
+        next_state = self.problem_obj.transition_model(state, action,start_state=state==INITIAL_STATE)
+        if not next_state:
+            return False
+        # don't want duplicate do nothing actions
+        if next_state == state and action!=DO_NOTHING:
+            return False
+        return True
 
     # @timing_decorator
     def get_allowed_actions(self, state: tuple) -> list:
@@ -190,8 +207,11 @@ class PolicyOrValueIteration(ABC):
         Returns:
             list: A list of allowed actions. Each action is represented as a tuple.
         """
+        if state ==INITIAL_STATE:
+            return self.selections_superset
 
-        actions = [(-1, None)]  # Include the "do nothing" option by default
+
+        actions = [DO_NOTHING]  # Include the "do nothing" option by default
 
         rnd, selection = state  # Unpack the current state into round number and selection
 
@@ -219,7 +239,7 @@ class PolicyOrValueIteration(ABC):
         rnd, selection = state  # Unpack the state into round number and selection
 
         # Check if the current round number is greater than or equal to the total number of rounds
-        return rnd >= len([x for x in self.problem_obj.rounds])
+        return rnd >= self.problem_obj.rounds.stop
 
     def get_best_initial_state(self) -> tuple:
         """
@@ -233,10 +253,10 @@ class PolicyOrValueIteration(ABC):
         """
 
         # Ensure that the value iteration process has been completed
-        assert self.algo_run, "Algorithm has not been run. Cannot determine the best initial state."
+        # assert self.algo_run, "Algorithm has not been run. Cannot determine the best initial state."
 
         # Filter out states where the round number is 0 (initial states) and get their values
-        initial_state_scores = [(k, v) for k, v in self.V.items() if k[0] == self.problem_obj.rounds.start]
+        initial_state_scores = [(k, v) for k, v in self.V.items() if k==INITIAL_STATE]
 
         # Extract the values from the filtered states
         values = [v for (k, v) in initial_state_scores]
@@ -247,7 +267,7 @@ class PolicyOrValueIteration(ABC):
         # Return the state with the highest value
         return initial_state_scores[max_value_index][0]
 
-    def get_strat(self) -> None:
+    def get_strat(self) -> List:
         """
         Generate the strategy based on the optimal policy and store it in `self.strat`.
 
@@ -256,26 +276,44 @@ class PolicyOrValueIteration(ABC):
         the sequence of states, actions, and values.
 
         Returns:
-            None: This method updates the `self.strat` attribute and does not return any value.
+            List: This method updates the `self.strat` attribute and does not return any value.
         """
 
         # Retrieve the best initial state based on the value iteration results
-        state = self.get_best_initial_state()
+        state =INITIAL_STATE
 
         self.strat = []  # Initialize the strategy list
 
         # Continue generating the strategy until reaching a final state
-        while not self.is_final(state):
-            rnd, selection = state  # Unpack the current state
+        while True:
             action, value = self.policy.policy[state]  # Get the best action and its value for the current state
 
             # Append the current state, action, and value to the strategy if not in the initial round
-            if rnd != 0:
-                self.strat.append({"state": state, "action": action, "value": value})
+            self.strat.append({"state": state, "action": action, "value": value})
 
             # Transition to the next state based on the chosen action
-            state = self.problem_obj.transition_model(state, action)
+            state = self.problem_obj.transition_model(state, action, start_state=state == INITIAL_STATE)
 
-            # If we were in the initial round, record this transition without an action
-            if rnd == 0:
-                self.strat.append({"state": (0, state[1]), "action": None, "value": value})
+
+            if self.is_final(state):
+                break
+
+        return self.strat
+
+    def eval_strat(self):
+
+        # get score for initial selection
+        first_state = self.strat[0]["action"]
+        score =  self.problem_obj.reward_function((self.problem_obj.rounds.start,first_state))
+
+
+        next_state = (self.problem_obj.rounds.start,first_state)
+        for stage in self.strat[1:]:
+            assert next_state[1] == stage["state"][1]
+            next_state = self.problem_obj.transition_model(state = stage["state"],
+                                                           action =stage["action"],
+                                                           start_state= stage["state"]==INITIAL_STATE)
+            score += self.problem_obj.reward_function(next_state)
+            # if self.is_final(next_state):
+            #     break
+        return score

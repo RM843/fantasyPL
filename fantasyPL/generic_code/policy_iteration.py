@@ -28,16 +28,16 @@ class PolicyIteration(PolicyOrValueIteration):
             gamma (float): The discount factor, a value between 0 and 1, that represents the importance of future rewards. Default is 1.0.
             epsilon (float): A small threshold used to determine when the value function has sufficiently converged. Default is 0.0001.
         """
-        states = [x for x in self.get_selections_generator(self.problem_obj.all_options,
-                                                           self.problem_obj.initial_selection_size)]
-        states = [x for x in product(self.problem_obj.rounds, states) if self.problem_obj.is_legal_state(x)]
+        self.states_superset = self.get_states_superset()
+        best_score_so_far = float("-inf")
+        best_strat = None
         while True:
             # Policy Evaluation
             delta = epsilon * 10
             while delta > epsilon:
                 delta = 0
 
-                for state in tqdm(states):
+                for state in tqdm( self.states_superset):
                     # for rnd in self.problem_obj.rounds:
                     #     state = (rnd, selection)
 
@@ -55,7 +55,7 @@ class PolicyIteration(PolicyOrValueIteration):
 
             # Policy Improvement
             policy_stable = True
-            for state in tqdm(states):
+            for state in tqdm( self.states_superset):
                 # for rnd in self.problem_obj.rounds:
                     # state = (rnd, selection)
 
@@ -68,10 +68,23 @@ class PolicyIteration(PolicyOrValueIteration):
 
                 if old_action != best_action:
                     print("Policy not yet stable")
+                    self.get_strat()
+                    score = self.eval_strat()
+                    if score > best_score_so_far:
+                        best_score_so_far = score
+                        best_strat = self.strat
+                    print("Strat Score:",score)
                     policy_stable = False
                     break# If any action changes, the policy is not stable yet
 
             # If the policy is stable, the algorithm has converged
             if policy_stable:
+                print("Policy stable")
+                final_score =  self.eval_strat()
+                assert final_score >= best_score_so_far, (
+                    f"final strat:\n{chr(10).join(map(str, self.strat))} scores {final_score}\n"
+                    f"but best strat:\n{chr(10).join(map(str, best_strat))} scores {best_score_so_far}"
+                )
                 return
+
 

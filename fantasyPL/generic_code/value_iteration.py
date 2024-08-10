@@ -28,22 +28,14 @@ class ValueIteration(PolicyOrValueIteration):
                 - policy (dict): The optimal policy mapping each state to its best action.
                 - strat (list): The strategy derived from the optimal policy.
         """
-        states = [x for x in self.get_selections_generator(self.problem_obj.all_options,
-                                                           self.problem_obj.initial_selection_size)]
-        states = [x for x in product(self.problem_obj.rounds, states) if self.problem_obj.is_legal_state(x)]
+        self.states_superset = self.get_states_superset()
         while True:
 
             deltas = 0  # Total change in value across all states in this iteration
-            for state in tqdm(states):
+            for state in tqdm(self.states_superset):
                 # for rnd in self.problem_obj.rounds:
 
                 def do_loop():
-
-                    # state = (rnd, selection)
-
-                    # if not self.problem_obj.is_legal_state(state):
-                    #     return 0
-                    self.states_superset.append(state)
 
                     delta = 0  # Change in value for the current state
                     v = self.V.get(state, 0)  # Current value of the state
@@ -68,5 +60,6 @@ class ValueIteration(PolicyOrValueIteration):
 
         print("Getting Policy")
         # Extract the optimal policy based on the final value function
-        for s in tqdm(states):
+        for s in tqdm(self.states_superset):
             self.policy.policy[s] = self.get_best_action(s, gamma)
+
