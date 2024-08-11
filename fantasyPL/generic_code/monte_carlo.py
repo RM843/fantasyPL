@@ -86,8 +86,9 @@ class MCTS(PolicyOrValueIteration):
     def backup(self, path, reward):
         "Send the reward back up to the ancestors of the leaf"
         for node in reversed(path):
+            self.Q[node] += (reward + ( self.Q[node]* self.N[node]))/( self.N[node]+1)
             self.N[node] += 1
-            self.Q[node] += reward
+
 
     def _uct_select(self, node):
         "Select a child of node, balancing exploration & exploitation"
@@ -95,6 +96,7 @@ class MCTS(PolicyOrValueIteration):
         # All children of node should already be expanded:
         # a node is fully expanded if and only if all children are explored
         is_all_children_expanded = all(n in self.children for n in self.children[node])
+        assert all(n in self.N for n in self.children[node])
         if not is_all_children_expanded:
             raise ValueError("Can only select fom fully expanded node")
 
