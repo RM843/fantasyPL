@@ -35,6 +35,9 @@ class MCTS(PolicyOrValueIteration):
         "Run on iteration of select -> expand -> simulation(rollout) -> backup"
         path = self.select(node)
         leaf = path[-1]
+
+        # need to do this each time as too expensive to get upfront for all nodes
+        self.get_all_children(node)
         self.expand(leaf)
         reward = 0
         for i in range(num_rollout):
@@ -62,6 +65,10 @@ class MCTS(PolicyOrValueIteration):
         if node in self.children:
             return  # already expanded
 
+        self.children[node] = node.children
+    def get_all_children(self,node):
+        if node.children !=[]:
+            return
         state = node.node_id
         allowed_actions = self.get_allowed_actions(state)
         children = []
@@ -71,7 +78,6 @@ class MCTS(PolicyOrValueIteration):
             value = self.problem_obj.reward_function(next_state)
             children.append(Node(node_id=next_state, value=value, terminal=self.problem_obj.rounds.stop == rnd))
         node.children = children
-        self.children[node] = children
 
     def simulate(self, node):
         "Run a random simulation from node as starting point"
@@ -80,7 +86,8 @@ class MCTS(PolicyOrValueIteration):
             score+=node.value
             if node.is_terminal():
                 return score
-            self.expand( node)
+            # need to do this each time as too expensive to get upfront for all nodes
+            self.get_all_children(node)
             node = node.find_random_child()
 
     def backup(self, path, reward):

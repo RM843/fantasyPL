@@ -26,9 +26,8 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
         # we choose the best greedy action based on simulation results
         # root_node = mcts.choose(root_node)
         # we repeat until root is terminal
-        print("here")
         # if root_node.is_terminal():
-        #     print("Found optimal (max) leaf node: {}, value: {}".format(root_node, root_node.value))
+        print("Found optimal (max) leaf node: {}, value: {}".format(root_node, root_node.value))
         #     return root_node.value
 
 
