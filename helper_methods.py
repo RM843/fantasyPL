@@ -14,7 +14,17 @@ def timing_decorator(func):
         print(f"Function '{func.__name__}' took {duration:.4f} seconds to execute")
         return result  # Return the result of the function
     return wrapper
+def dedup_tuple(tuples_list,i):
+    seen = set()  # To track seen first values
+    result = []   # To store the result
 
+    for tup in tuples_list:
+        first_value = tup[i]
+        if first_value not in seen:
+            seen.add(first_value)
+            result.append(tup)
+
+    return result
 def combination_generator(iterable, r):
     for combo in combinations(iterable, r):
         yield combo

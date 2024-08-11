@@ -20,7 +20,7 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
     mcts = MCTS(exploration_weight=exploration_weight,problem_obj=problem_obj)
     mcts.get_selections_superset()
     terminal_reached = False
-    mcts.run(iterations=num_iter)
+    # mcts.run(iterations=num_iter,initial_node=root_node)
     while True:
         # we run MCTS simulation for many times
         for _ in range(num_iter):

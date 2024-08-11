@@ -12,7 +12,9 @@ class NodeDict:
         self._data = data
 
     def __setitem__(self, key, value):
-        self._data[key.node_id] = value
+        if isinstance(key,Node):
+            key = key.node_id
+        self._data[key] = value
 
     def __contains__(self, key):
         return key.node_id in self._data
@@ -55,7 +57,9 @@ class NodeDict:
         Raises:
             KeyError: If the key is not found in the dictionary.
         """
-        return self._data[key.node_id]
+        if isinstance(key, Node):
+            key = key.node_id
+        return self._data[key]
 
     def keys(self):
         """
@@ -85,7 +89,10 @@ class NodeDict:
         return self._data.values()
 
     def get(self, key, default=None):
-        return self._data.get(key.node_id, default)
+        if isinstance(key, Node):
+            key = key.node_id
+
+        return self._data.get(key, default)
 
 
 class MCTS(PolicyOrValueIteration):
@@ -95,7 +102,7 @@ class MCTS(PolicyOrValueIteration):
         super().__init__(problem_obj)
         self.Q = NodeDict(defaultdict(float))  # total reward of each node
         self.N = NodeDict(defaultdict(float))  # total visit count for each node
-        self.children =  NodeDict(dict())  # children of each node: key is explored node, value is set of children
+        self.explored =  NodeDict(dict())  # children of each node: key is explored node, value is set of children
         self.exploration_weight = exploration_weight
     def algorithm(self,gamma,epsilon):
         ''''''
@@ -155,7 +162,7 @@ class MCTS(PolicyOrValueIteration):
     def run(self, iterations,initial_node):
         node = initial_node
         for _ in range(iterations):
-            explore_path = self.select(node)
+            path = self.select(node)
             expanded_node = self.expand(node)
             points = self.simulate(expanded_node)
             self.backpropagate(expanded_node, points)
@@ -180,23 +187,29 @@ class MCTS(PolicyOrValueIteration):
         path = []
         while True:
             path.append(node)
-            if node not in self.children or not self.children[node]:
+            is_leaf=  node not in self.explored
+            if is_leaf or node.terminal:
                 # node is either unexplored or terminal
                 return path
-            # unexplored = self.children[node] - self.children.keys()
-            unexplored = [[z for z in  self.children[node] if y == z.node_id][0] for y in [x.node_id for x in self.children[node]]-self.children.keys()]
-            if unexplored:
-                n = unexplored.pop()
+            unexplored_child_nodes = self.get_unexplored_children(node)
+            if unexplored_child_nodes != set():
+                n = unexplored_child_nodes.pop()
                 path.append(n)
                 return path
             node = self.select_child_node(node,exploration_rate=self.exploration_weight)  # descend a layer deeper
+    def get_unexplored_children(self,node):
+
+        explored_ids = set([x for x in self.explored])
+        children_ids = set([x.node_id for x in node.children])
+        unexplored_ids = children_ids - explored_ids
+        return [[y for y in node.children if x==y.node_id][0] for x in unexplored_ids]
 
     def expand(self, node):
         "Update the `children` dict with the children of `node`"
-        if node in self.children or node.terminal:
+        if node in self.explored or node.terminal:
             return  # already expanded
         assert  not (node.children ==[] and not node.terminal)
-        self.children[node] = node.children
+        self.explored[node] = node.children
     def get_all_children(self,node):
         if node.children !=[] or node.terminal:
             return
@@ -223,8 +236,8 @@ class MCTS(PolicyOrValueIteration):
             # need to do this each time as too expensive to get upfront for all nodes
             self.get_all_children(node)
 
-            if node in self.children:
-                if all(n in self.children for n in self.children[node]):
+            if node in self.explored:
+                if all(n in self.explored for n in self.explored[node]):
                     node = self.select_child_node(node,exploration_rate=self.exploration_weight)
                     continue
             node = node.find_random_child()
