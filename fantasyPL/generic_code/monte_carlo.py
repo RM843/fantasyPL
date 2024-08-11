@@ -1,16 +1,21 @@
 from collections import defaultdict
 import math
 
+from fantasyPL.generic_code.binary_tree import Node
+from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration, INITIAL_STATE
 
-class MCTS:
+
+class MCTS(PolicyOrValueIteration):
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
-    def __init__(self, exploration_weight=1.0):
+    def __init__(self, problem_obj, exploration_weight=1.0):
+        super().__init__(problem_obj)
         self.Q = defaultdict(float)  # total reward of each node
         self.N = defaultdict(float)  # total visit count for each node
         self.children = dict()  # children of each node: key is explored node, value is set of children
         self.exploration_weight = exploration_weight
-
+    def algorithm(self,gamma,epsilon):
+        ''''''
     def choose(self, node):
         "Choose the best successor of node. (Choose a move in the game)"
         if node.is_terminal():
@@ -26,14 +31,15 @@ class MCTS:
 
         return max(self.children[node], key=score)
 
-    def run(self, node, num_rollout):
+    def run_mcts(self, node, num_rollout):
         "Run on iteration of select -> expand -> simulation(rollout) -> backup"
         path = self.select(node)
         leaf = path[-1]
-        self.expand(leaf)
+        # self.expand(leaf)
         reward = 0
         for i in range(num_rollout):
             reward += self.simulate(leaf)
+        reward = reward /num_rollout
         self.backup(path, reward)
 
     def select(self, node):
@@ -55,13 +61,26 @@ class MCTS:
         "Update the `children` dict with the children of `node`"
         if node in self.children:
             return  # already expanded
-        self.children[node] = node.find_children()
+
+        state = node.node_id
+        allowed_actions = self.get_allowed_actions(state)
+        children = []
+        for action in allowed_actions:
+            next_state = self.problem_obj.transition_model(state, action, start_state=INITIAL_STATE == state)
+            rnd, selection = next_state
+            value = self.problem_obj.reward_function(next_state)
+            children.append(Node(node_id=next_state, value=value, terminal=self.problem_obj.rounds.stop == rnd))
+        node.children = children
+        self.children[node] = children
 
     def simulate(self, node):
         "Run a random simulation from node as starting point"
+        score = 0
         while True:
+            score+=node.value
             if node.is_terminal():
-                return node.reward()
+                return score
+            self.expand( node)
             node = node.find_random_child()
 
     def backup(self, path, reward):

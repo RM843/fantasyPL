@@ -70,7 +70,7 @@ class PolicyOrValueIteration(ABC):
         required_methods = [
             'transition_model',  # Method to model transitions between states
             'reward_function',  # Method to calculate rewards
-            'is_legal_state'  # Method to check if a selection is legal
+            'is_legal_selection'  # Method to check if a selection is legal
         ]
         required_attributes = [
             'all_options',  # Attribute containing all possible options
@@ -91,10 +91,15 @@ class PolicyOrValueIteration(ABC):
     def get_selections_generator(self, options, selection_size):
 
         return combination_generator(options, selection_size)
-    def get_states_superset(self):
+
+    def get_selections_superset(self,options_limit=None):
         self.selections_superset = [x for x in self.get_selections_generator(self.problem_obj.all_options,
-                                                           self.problem_obj.initial_selection_size)]
-        return  [INITIAL_STATE] +[x for x in product(self.problem_obj.rounds,  self.selections_superset ) if self.problem_obj.is_legal_state(x)]
+                                                                             self.problem_obj.initial_selection_size)
+                                                        if self.problem_obj.is_legal_selection(x)]
+        return self.selections_superset
+    def get_states_superset(self):
+
+        return  [INITIAL_STATE] +[x for x in product(self.problem_obj.rounds,  self. get_selections_superset() )]
     @timing_decorator
     def run(self, gamma: float = 1.0, epsilon: float = 0.0001) -> tuple:
         """
@@ -114,7 +119,7 @@ class PolicyOrValueIteration(ABC):
         self.algo_run = True
         self.strat = self.get_strat()  # Derive the strategy from the optimal policy
         final_score = self.eval_strat()
-        print("Final Best Score:", final_score)
+        print(f"Best strat:\n{chr(10).join(map(str, self.strat))} scores {final_score}")
         return self.V, self.policy, self.strat ,final_score
 
     # @timing_decorator

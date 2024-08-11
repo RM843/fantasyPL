@@ -3,11 +3,11 @@ import random
 
 
 class Node:
-    def __init__(self, node_id,terminal,value=None,):
+    def __init__(self, node_id,terminal,value=None):
         self.children = []
         self.node_id = node_id
         self.value = value
-        self.terminal =terminal
+        self.terminal = terminal
 
     def __repr__(self):
         return "node@" + str(self.node_id)
@@ -21,18 +21,14 @@ class Node:
     def find_children(self):
         if self.is_terminal():
             return []
-        return self.children
+        assert self.children !=[]
 
-    def find_children_list(self):
-        """This makes sure left, right order instead of an unsorted set"""
-        if self.is_terminal():
-            return []
         return self.children
 
     def find_random_child(self):
         if self.is_terminal():
             return None
-        return random.choice(self.children)
+        return random.choice(self.find_children())
     def reward(self):
         return self.value
 
