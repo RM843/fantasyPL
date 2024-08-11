@@ -35,7 +35,7 @@ class MCTS(PolicyOrValueIteration):
         "Run on iteration of select -> expand -> simulation(rollout) -> backup"
         path = self.select(node)
         leaf = path[-1]
-        # self.expand(leaf)
+        self.expand(leaf)
         reward = 0
         for i in range(num_rollout):
             reward += self.simulate(leaf)
