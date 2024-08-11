@@ -56,27 +56,30 @@ def check_policy_it_equals_value_it():
     ALL_OPTIONS = ['A', 'B', 'C', 'D', "E"]
     ROUNDS = 5
     scores = {
-        "A": {1: 2, 2: 6, 3: 5, 4: 6, 5: 40},
+        "A": {1: 2, 2: 335, 3: 1, 4: 16, 5: 5},
         "B": {1: 9, 2: 5, 3: 6, 4: 5, 5: 6},
         "C": {1: 1, 2: 8, 3: 1, 4: 8, 5: 9},
         "D": {1: 8, 2: 7, 3: 8, 4: 7, 5: 8},
-        "E": {1: 4, 2: 7, 3: 5, 4: 33, 5: 4}
+        "E": {1: 4, 2: 7, 3: 5, 4: 8, 5: 4}
     }
 
     initial_selection_size = 2
     problem_obj = Example(ALL_OPTIONS, range(1,ROUNDS), scores, initial_selection_size)
-    initial_selection = ("A","B")
-    mcts_playout(initial_selection=initial_selection, num_iter=50, num_rollout=10, exploration_weight=51,problem_obj=problem_obj)
 
 
-    # pi = PolicyIteration(problem_obj)
-    # vi = ValueIteration(problem_obj)
-    # v, policy, strat,  best_score = pi.run()
-    # v2, policy2, strat2 , best_score2= vi.run()
-    # assert strat == strat2
-    # assert v == v2
-    # assert policy.policy == policy2.policy
-    # assert best_score==best_score2
+
+    pi = PolicyIteration(problem_obj)
+    vi = ValueIteration(problem_obj)
+    v, policy, strat,  best_score = pi.run()
+    v2, policy2, strat2 , best_score2= vi.run()
+    assert strat == strat2
+    assert v == v2
+    assert policy.policy == policy2.policy
+    assert best_score==best_score2
+
+    initial_selection = strat[0]["action"]
+    mcts_playout(initial_selection=initial_selection, num_iter=50, num_rollout=10, exploration_weight=0.2 ,
+                 problem_obj=problem_obj)
 
 if __name__ == '__main__':
     check_policy_it_equals_value_it()
