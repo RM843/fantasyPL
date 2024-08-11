@@ -19,10 +19,18 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
 
     mcts = MCTS(exploration_weight=exploration_weight,problem_obj=problem_obj)
     mcts.get_selections_superset()
+    terminal_reached = False
     while True:
         # we run MCTS simulation for many times
         for _ in range(num_iter):
-            mcts.run_mcts(root_node, num_rollout=num_rollout)
+            while not terminal_reached:
+                terminal_reached = mcts.run_mcts(root_node, num_rollout=num_rollout)
+
+        # for s in tqdm(self.states_superset):
+        #     self.policy.policy[s] = self.get_best_action(s, gamma)
+        mcts.strat = mcts.get_strat(root_node)  # Derive the strategy from the optimal policy
+        final_score = mcts.eval_strat()
+        print(f"Best strat:\n{chr(10).join(map(str, mcts.strat))} scores {final_score}")
         # we choose the best greedy action based on simulation results
         # root_node = mcts.choose(root_node)
         # we repeat until root is terminal

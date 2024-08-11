@@ -1,5 +1,6 @@
 from collections import defaultdict
 import math
+from typing import List
 
 from fantasyPL.generic_code.binary_tree import Node
 from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration, INITIAL_STATE
@@ -16,6 +17,30 @@ class MCTS(PolicyOrValueIteration):
         self.exploration_weight = exploration_weight
     def algorithm(self,gamma,epsilon):
         ''''''
+
+    def get_strat(self,initial_node) -> List:
+
+
+        self.strat = []  # Initialize the strategy list
+        state = initial_node
+        while True:
+            max_action_value = float("-inf")
+            max_action =None
+            assert self.children[state] !=[]
+            for i, child_node in enumerate(self.children[state]):
+                action_value = self.Q[child_node]
+                if action_value >max_action_value:
+                    max_action_value = action_value
+                    max_action = i
+            state =  self.children[state][max_action]
+            self.strat.append({"state":state, "action": None, "value": max_action_value})
+            if self.is_final(state.node_id):
+                break
+
+
+        return self.strat
+
+
     def choose(self, node):
         "Choose the best successor of node. (Choose a move in the game)"
         if node.is_terminal():
@@ -44,6 +69,7 @@ class MCTS(PolicyOrValueIteration):
             reward += self.simulate(leaf)
         reward = reward /num_rollout
         self.backup(path, reward)
+        return leaf.terminal
 
     def select(self, node):
         "Find an unexplored descendent of `node`"
@@ -93,7 +119,9 @@ class MCTS(PolicyOrValueIteration):
     def backup(self, path, reward):
         "Send the reward back up to the ancestors of the leaf"
         for node in reversed(path):
-            self.Q[node] += (reward + ( self.Q[node]* self.N[node]))/( self.N[node]+1)
+            new_value =  (reward + ( self.Q[node]* self.N[node]))/( self.N[node]+1)
+            print(abs(new_value-self.Q[node]))
+            self.Q[node] = new_value
             self.N[node] += 1
 
 
