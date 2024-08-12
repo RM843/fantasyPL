@@ -306,7 +306,7 @@ class PolicyOrValueIteration(ABC):
         return self.strat
 
     def eval_strat(self):
-
+        self.get_strat()
         # get score for initial selection
         first_state = self.strat[0]["action"]
         score =  self.problem_obj.reward_function((self.problem_obj.rounds.start,first_state))

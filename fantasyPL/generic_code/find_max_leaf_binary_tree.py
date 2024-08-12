@@ -1,3 +1,5 @@
+import statistics
+
 from fantasyPL.generic_code.binary_tree import make_binary_tree, Node
 from  fantasyPL.generic_code.monte_carlo import MCTS
 import argparse
@@ -20,16 +22,13 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
     mcts = MCTS(exploration_weight=exploration_weight,problem_obj=problem_obj)
     mcts.get_selections_superset()
     terminal_reached = False
-    # mcts.run(iterations=num_iter,initial_node=root_node)
     while True:
         # we run MCTS simulation for many times
-        for _ in range(num_iter):
-            while not terminal_reached:
-                terminal_reached = mcts.run_mcts(root_node, num_rollout=num_rollout)
+        mcts.run(iterations=num_iter,initial_node=root_node,num_rollout=num_rollout)
 
         # for s in tqdm(self.states_superset):
         #     self.policy.policy[s] = self.get_best_action(s, gamma)
-        mcts.strat = mcts.get_strat(root_node)  # Derive the strategy from the optimal policy
+        mcts.strat = mcts.get_strat()  # Derive the strategy from the optimal policy
         new_final_score = mcts.eval_strat()
         if final_score!= new_final_score:
             final_score=new_final_score
@@ -41,6 +40,9 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
         # root_node = mcts.choose(root_node)
         # we repeat until root is terminal
         # if root_node.is_terminal():
+        # std = statistics.stdev(list(mcts.N.values()))/statistics.mean(list(mcts.N.values()))
+        # mcts.exploration_weight = 5**std
+        # print("std:",std)
         terminal_reached = False
         #     return root_node.value
 

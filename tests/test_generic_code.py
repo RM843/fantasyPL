@@ -53,8 +53,8 @@ class Example:
 
 def check_policy_it_equals_value_it():
     # Example Data
-    ALL_OPTIONS = ['A', 'B', 'C', 'D', "E"]
-    ROUNDS = 5
+    # ALL_OPTIONS = ['A', 'B', 'C', 'D', "E"]
+    # ROUNDS = 5
     scores = {
         "A": {1: 2, 2: 335, 3: 1, 4: 16, 5: 5},
         "B": {1: 9, 2: 5, 3: 6, 4: 5, 5: 6},
@@ -62,7 +62,15 @@ def check_policy_it_equals_value_it():
         "D": {1: 8, 2: 7, 3: 8, 4: 7, 5: 8},
         "E": {1: 4, 2: 7, 3: 5, 4: 8, 5: 4}
     }
+    simple_scores = {
+        "A": {1: 2, 2: 8},
+        "B": {1: 9, 2: 5},
+        "C": {1: 5, 2: 7}
+    }
+    # scores = simple_scores
 
+    ALL_OPTIONS = list(scores.keys())
+    ROUNDS = len(scores[ALL_OPTIONS[0]].keys())
     initial_selection_size = 2
     problem_obj = Example(ALL_OPTIONS, range(1,ROUNDS), scores, initial_selection_size)
 
@@ -78,7 +86,7 @@ def check_policy_it_equals_value_it():
     assert best_score==best_score2
 
     initial_selection = strat[0]["action"]
-    mcts_playout(initial_selection=initial_selection, num_iter=50, num_rollout=10, exploration_weight=0.2 ,
+    mcts_playout(initial_selection=initial_selection, num_iter=500, num_rollout=10, exploration_weight=200 ,
                  problem_obj=problem_obj)
 
 if __name__ == '__main__':
