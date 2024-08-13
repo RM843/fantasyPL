@@ -5,6 +5,7 @@ from typing import List, Any, Dict
 
 from fantasyPL.generic_code.binary_tree import Node
 from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration, INITIAL_STATE
+from helper_methods import timing_decorator
 
 
 class NodeDict:
@@ -175,21 +176,6 @@ class MCTS(PolicyOrValueIteration):
             av_return = self.simulate(path, rollouts=num_rollout)
             self.backup(path, av_return)
 
-    # def run_mcts(self, node, num_rollout):
-    #     "Run on iteration of select -> expand -> simulation(rollout) -> backup"
-    #     path = self.select(node)
-    #     leaf = path[-1]
-    #     accumulated_score = sum([x.value for x in path[:-1]])
-    #     # need to do this each time as too expensive to get upfront for all nodes
-    #     self.get_all_children(leaf)
-    #     self.expand(leaf)
-    #     reward = 0
-    #     for i in range(num_rollout):
-    #         reward += self.simulate(leaf)
-    #     reward = reward /num_rollout
-    #     reward = (accumulated_score +reward) / len(path)
-    #     self.backup(path, reward)
-    #     return leaf.terminal
 
     def select(self, node):
         "Find an unexplored descendant of `node`"
@@ -207,8 +193,9 @@ class MCTS(PolicyOrValueIteration):
                 n = unexplored_child_nodes.pop()
                 path.append(n)
                 return path
-            node = self._uct_select(node)  #,exploration_rate=self.exploration_weight)  # descend a layer deeper
+            node = self.select_child_node(node,exploration_rate=self.exploration_weight)  # descend a layer deeper
 
+            # node = self._uct_select(node)  # descend a layer deeper
     def get_unexplored_children(self, node):
         self.get_all_children(node)
         explored_ids = set([x for x in self.explored])
@@ -248,7 +235,7 @@ class MCTS(PolicyOrValueIteration):
         if path[-1].terminal:
             return score_so_far
 
-        self.get_all_children(node)
+        self.get_all_children( path[-1])
         node = path[-1].find_random_child()
 
         for i in range(rollouts):
@@ -278,21 +265,25 @@ class MCTS(PolicyOrValueIteration):
             # print(abs(new_value-self.Q[node]))
             self.Q[node] += reward
             self.N[node] += 1
+    # @timing_decorator
+    def select_child_node(self, node, exploration_rate):
+        is_all_children_expanded = all(n in self.explored for n in self.explored[node])
+        assert all(n in self.N for n in self.explored[node])
+        if not is_all_children_expanded:
+            raise ValueError("Can only select fom fully expanded node")
 
-    # def select_child_node(self,node,exploration_rate):
-    #     is_all_children_expanded = all(n in self.children for n in self.children[node])
-    #     assert all(n in self.N for n in self.children[node])
-    #     if not is_all_children_expanded:
-    #         raise ValueError("Can only select fom fully expanded node")
-    #
-    #     if  random.random() <exploration_rate:
-    #         return random.choice(self.children[node])
-    #
-    #     else:
-    #         # child_values = [self.Q[x] for x in self.children[node]]
-    #         # max_index = child_values.index(max(child_values))
-    #         return max([(x,self.Q[x]) for x in self.children[node]], key=lambda x: x[1])[0]
+        if random.random() < exploration_rate:
+            return random.choice(self.explored[node])
 
+        else:
+            def state_val(n):
+                "Upper confidence bound for trees"
+                return self.Q[n] / self.N[n]
+            # child_values = [self.Q[x] for x in self.explored[node]]
+            # max_index = child_values.index(max(child_values))
+            return max(self.explored[node], key=state_val)
+
+    @timing_decorator
     def _uct_select(self, node):
         "Select a child of node, balancing exploration & exploitation"
 

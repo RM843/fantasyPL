@@ -7,14 +7,19 @@ from helper_methods import combination_generator, timing_decorator
 
 
 class Policy:
-    def __init__(self, get_allowed_actions_method):
+    def __init__(self, get_allowed_actions_method,random=False):
         self.policy = {}
         self.get_allowed_actions = get_allowed_actions_method
+        self.random = random
 
     def get_action(self, state):
+        if self.random:
+            return  random.choice(self.get_allowed_actions(state)),None
         if state not in self.policy:
             self.policy[state] = random.choice(self.get_allowed_actions(state)),None
         return  self.policy[state]
+    def __call__(self, state):
+        return self.get_action(state)
 
 DO_NOTHING=(-1, None)
 INITIAL_STATE="INITIAL"
@@ -58,7 +63,7 @@ class PolicyOrValueIteration(ABC):
         self.policy = Policy(get_allowed_actions_method=self.get_allowed_actions)
         self.strat = []
         self.algo_run = False
-        self.states_superset = []
+        self.selections_superset = self.get_selections_superset()
         self.validate_problem_obj()  # Validate the problem_obj during initialization
         # self.selections_generator = self.get_selections_generator(self.problem_obj.all_options,
         #                                                 self.problem_obj.initial_selection_size)

@@ -1,13 +1,15 @@
 import statistics
 
 from fantasyPL.generic_code.binary_tree import make_binary_tree, Node
-from  fantasyPL.generic_code.monte_carlo import MCTS
+from  fantasyPL.generic_code.monte_carlo_ts import MCTS
 import argparse
 
 from fantasyPL.generic_code.reinforment_learning import INITIAL_STATE
+from helper_methods import timing_decorator
 
 
-def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,problem_obj):
+@timing_decorator
+def mcts_playout( num_iter, num_rollout, exploration_weight,problem_obj):
     # root, leaf_nodes_dict = make_binary_tree(depth=depth)
     # leaf_nodes_dict_sorted = sorted(leaf_nodes_dict.items(), key=lambda x: x[1], reverse=True)
     # print("Expected (max) leaf node: {}, value: {}".format(leaf_nodes_dict_sorted[0][0],
@@ -23,6 +25,7 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
     mcts.get_selections_superset()
     terminal_reached = False
     while True:
+        # print("Here")
         # we run MCTS simulation for many times
         mcts.run(iterations=num_iter,initial_node=root_node,num_rollout=num_rollout)
 
@@ -32,7 +35,7 @@ def mcts_playout(initial_selection, num_iter, num_rollout, exploration_weight,pr
         new_final_score = mcts.eval_strat()
         if final_score!= new_final_score:
             final_score=new_final_score
-            print(final_score)
+            # print(final_score)
         if final_score==413:
             print(f"Best strat:\n{chr(10).join(map(str, mcts.strat))} scores {final_score}")
             break

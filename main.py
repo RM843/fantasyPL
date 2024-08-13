@@ -55,9 +55,9 @@ for season, gw in all_gws:
 
     initial_selection_size = 2
     fantasy_team_obj = FantasyPL(all_options=players, rounds= range(gw,total_rounds ), scores=scores, initial_selection_size=initial_selection_size)
-    Value_it = PolicyIteration(fantasy_team_obj)
-
-    v, policy, strat = Value_it.run()
+    # Value_it = PolicyIteration(fantasy_team_obj)
+    #
+    # v, policy, strat = Value_it.run()
     print(strat)
     break
     print("here")

@@ -1,5 +1,7 @@
 from fantasyPL.generic_code.find_max_leaf_binary_tree import mcts_playout
+from fantasyPL.generic_code.monte_carlo_pure import monte_carlo_policy_evaluation, random_policy, NewEnvironment
 from fantasyPL.generic_code.policy_iteration import PolicyIteration
+from fantasyPL.generic_code.reinforment_learning import Policy, PolicyOrValueIteration
 from fantasyPL.generic_code.value_iteration import ValueIteration
 
 
@@ -19,6 +21,7 @@ class Example:
 
     # @timing_decorator
     def transition_model(self, state, action,start_state):
+        assert not state[0] ==self.rounds.stop
         if start_state:
             rnd = self.rounds.start -1
             selection = action
@@ -38,6 +41,7 @@ class Example:
         if not self.is_legal_selection(selection):
             return False
         return next_state
+
     # @timing_decorator
     def reward_function(self, state):
         rnd, selection = state
@@ -50,6 +54,7 @@ class Example:
             #     rnd = list(self.scores[selct].keys())[0]
             score += self.scores[selct][rnd]
         return score
+
 
 def check_policy_it_equals_value_it():
     # Example Data
@@ -72,22 +77,35 @@ def check_policy_it_equals_value_it():
     ALL_OPTIONS = list(scores.keys())
     ROUNDS = len(scores[ALL_OPTIONS[0]].keys())
     initial_selection_size = 2
-    problem_obj = Example(ALL_OPTIONS, range(1,ROUNDS), scores, initial_selection_size)
-
-
+    problem_obj = Example(ALL_OPTIONS, range(1, ROUNDS), scores, initial_selection_size)
 
     pi = PolicyIteration(problem_obj)
     vi = ValueIteration(problem_obj)
-    v, policy, strat,  best_score = pi.run()
-    v2, policy2, strat2 , best_score2= vi.run()
+    v, policy, strat, best_score = pi.run()
+    v2, policy2, strat2, best_score2 = vi.run()
     assert strat == strat2
     assert v == v2
     assert policy.policy == policy2.policy
-    assert best_score==best_score2
+    assert best_score == best_score2
 
-    initial_selection = strat[0]["action"]
-    mcts_playout(initial_selection=initial_selection, num_iter=500, num_rollout=10, exploration_weight=200 ,
-                 problem_obj=problem_obj)
+    env = NewEnvironment(problem_obj=problem_obj)
+    # Define the number of episodes for MC evaluation
+    num_episodes = 1000
+
+    policy = Policy(get_allowed_actions_method =ValueIteration(problem_obj).get_allowed_actions,random=True)
+    # Evaluate the policy
+    v = monte_carlo_policy_evaluation(policy, env, num_episodes)
+
+
+    print("The value table is:")
+    print(v)
+
+    # initial_selection = strat[0]["action"]
+    # for explore in [200, 200,20,5,1]:
+    #     print("Exploration weight = ",explore)
+    #     mcts_playout( num_iter=500, num_rollout=10, exploration_weight=.2 ,
+    #              problem_obj=problem_obj)
+
 
 if __name__ == '__main__':
     check_policy_it_equals_value_it()
