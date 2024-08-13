@@ -6,20 +6,7 @@ from fantasyPL.generic_code.reinforment_learning import INITIAL_STATE
 # Define a simple environment with deterministic transitions
 # For simplicity, let's assume there are 5 states and
 # moving from one state to the next gives a reward of 1, with state 4 being terminal
-class NewEnvironment:
-	def __init__(self, problem_obj):
-		self.problem_obj = problem_obj
-		self.reset()
 
-	def step(self, action):
-		self.state = self.problem_obj.transition_model( self.state, action, start_state=self.state==INITIAL_STATE)
-		reward =  self.problem_obj.reward_function( self.state)
-
-
-		return self.state, reward, self.state[0] ==self.problem_obj.rounds.stop
-
-	def reset(self):
-		self.state = INITIAL_STATE
 
 class SimpleEnvironment:
 	def __init__(self, num_states=5):
@@ -53,8 +40,7 @@ def monte_carlo_policy_evaluation(policy, env, num_episodes, gamma=1.0):
 	returns = {}
 
 	for _ in range(num_episodes):
-		env.reset()
-		state = env.state
+		state = env.reset()
 		episode = []
 		# Generate an episode
 		while True:

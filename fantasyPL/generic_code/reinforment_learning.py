@@ -106,7 +106,7 @@ class PolicyOrValueIteration(ABC):
 
         return  [INITIAL_STATE] +[x for x in product(self.problem_obj.rounds,  self. get_selections_superset() )]
     @timing_decorator
-    def run(self, gamma: float = 1.0, epsilon: float = 0.0001) -> tuple:
+    def run(self, **kwargs) -> tuple:
         """
         Perform value iteration to find the optimal value function and policy.
 
@@ -120,7 +120,7 @@ class PolicyOrValueIteration(ABC):
                 - policy (dict): The optimal policy mapping each state to its best action.
                 - strat (list): The strategy derived from the optimal policy.
         """
-        self.algorithm(gamma=gamma,epsilon=epsilon)
+        self.algorithm(**kwargs)
         self.algo_run = True
         self.strat = self.get_strat()  # Derive the strategy from the optimal policy
         final_score = self.eval_strat()
@@ -296,6 +296,9 @@ class PolicyOrValueIteration(ABC):
 
         # Continue generating the strategy until reaching a final state
         while True:
+            if state not in self.policy.policy:
+                self.strat = None
+                return self.strat
             action, value = self.policy.policy[state]  # Get the best action and its value for the current state
 
             # Append the current state, action, and value to the strategy if not in the initial round
@@ -312,6 +315,8 @@ class PolicyOrValueIteration(ABC):
 
     def eval_strat(self):
         self.get_strat()
+        if self.strat is None:
+            return
         # get score for initial selection
         first_state = self.strat[0]["action"]
         score =  self.problem_obj.reward_function((self.problem_obj.rounds.start,first_state))

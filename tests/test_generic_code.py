@@ -1,7 +1,8 @@
 from fantasyPL.generic_code.find_max_leaf_binary_tree import mcts_playout
-from fantasyPL.generic_code.monte_carlo_pure import monte_carlo_policy_evaluation, random_policy, NewEnvironment
+from fantasyPL.generic_code.monte_carlo_pure import monte_carlo_policy_evaluation
 from fantasyPL.generic_code.policy_iteration import PolicyIteration
-from fantasyPL.generic_code.reinforment_learning import Policy, PolicyOrValueIteration
+from fantasyPL.generic_code.reinforment_learning import Policy, INITIAL_STATE
+from fantasyPL.generic_code.sarsa import Sarsa
 from fantasyPL.generic_code.value_iteration import ValueIteration
 
 
@@ -20,22 +21,20 @@ class Example:
         return all(conds)
 
     # @timing_decorator
-    def transition_model(self, state, action,start_state):
-        assert not state[0] ==self.rounds.stop
+    def transition_model(self, state, action, start_state):
+        assert not state[0] == self.rounds.stop
         if start_state:
-            rnd = self.rounds.start -1
+            rnd = self.rounds.start - 1
             selection = action
             option = None
         else:
             rnd, selection = state
             index_to_change, option = action
         if option is not None:
-
             selection = list(selection)
             selection[index_to_change] = option
             selection.sort()
             selection = tuple(selection)
-
 
         next_state = (rnd + 1, tuple(selection))
         if not self.is_legal_selection(selection):
@@ -54,6 +53,22 @@ class Example:
             #     rnd = list(self.scores[selct].keys())[0]
             score += self.scores[selct][rnd]
         return score
+
+
+class NewEnvironment:
+    def __init__(self, problem_obj):
+        self.problem_obj = problem_obj
+        self.reset()
+
+    def step(self, action):
+        self.state = self.problem_obj.transition_model(self.state, action, start_state=self.state == INITIAL_STATE)
+        reward = self.problem_obj.reward_function(self.state)
+
+        return self.state, reward, self.state[0] == self.problem_obj.rounds.stop
+
+    def reset(self):
+        self.state = INITIAL_STATE
+        return self.state
 
 
 def check_policy_it_equals_value_it():
@@ -81,8 +96,8 @@ def check_policy_it_equals_value_it():
 
     pi = PolicyIteration(problem_obj)
     vi = ValueIteration(problem_obj)
-    v, policy, strat, best_score = pi.run()
-    v2, policy2, strat2, best_score2 = vi.run()
+    v, policy, strat, best_score = pi.run(gamma = 1.0, epsilon = 0.0001)
+    v2, policy2, strat2, best_score2 = vi.run(gamma = 1.0, epsilon = 0.0001)
     assert strat == strat2
     assert v == v2
     assert policy.policy == policy2.policy
@@ -92,13 +107,15 @@ def check_policy_it_equals_value_it():
     # Define the number of episodes for MC evaluation
     num_episodes = 1000
 
-    policy = Policy(get_allowed_actions_method =ValueIteration(problem_obj).get_allowed_actions,random=True)
+    policy = Policy(get_allowed_actions_method=ValueIteration(problem_obj).get_allowed_actions, random=True)
     # Evaluate the policy
     v = monte_carlo_policy_evaluation(policy, env, num_episodes)
 
-
     print("The value table is:")
     print(v)
+
+    sarsa = Sarsa(problem_obj=problem_obj,env=env)
+    v3, policy3, strat3, best_score3 = sarsa.run( exploration_rate=0.2, lr=0.01, discount_factor=0.99)
 
     # initial_selection = strat[0]["action"]
     # for explore in [200, 200,20,5,1]:
