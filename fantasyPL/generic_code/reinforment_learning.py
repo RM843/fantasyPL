@@ -176,6 +176,7 @@ class PolicyOrValueIteration(ABC):
             float: The calculated value of taking the specified action in the
                    given state.
         """
+
         is_initial_state = INITIAL_STATE==state
         next_state = self.problem_obj.transition_model(state, action,start_state=is_initial_state)  # Determine the next state
         # Calculate the reward for the next state
@@ -217,6 +218,10 @@ class PolicyOrValueIteration(ABC):
         Returns:
             list: A list of allowed actions. Each action is represented as a tuple.
         """
+        if "env" in dir(self):
+            if "get_allowed_actions" in dir(self.env):
+                return self.env.get_allowed_actions(state)
+
         if state ==INITIAL_STATE:
             return self.selections_superset
 
