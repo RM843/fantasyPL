@@ -1,94 +1,89 @@
+import numpy as np
 import random
-from itertools import product
-from typing import List
-import matplotlib.pyplot as plt
 
-from tqdm import tqdm
+from matplotlib import pyplot as plt
 
-from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration
+from envs import CliffWalkingEnv
 
 
-class QLearn(PolicyOrValueIteration):
-    def __init__(self, problem_obj, env):
+class QLearningAgent:
+    def __init__(self, env, learning_rate=0.1, discount_factor=0.99, epsilon=1.0, epsilon_decay=0.995,
+                 epsilon_min=0.01, moving_average_period=100):
+        self.env = env  # The environment object
+        self.state_size = env.height * env.width  # Total number of states in the grid
+        self.action_size = 4  # 4 possible actions: Up, Right, Down, Left
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
+        self.moving_average_period = moving_average_period  # Period for moving average
+        self.early_stopping = 0  # Tracks consecutive episodes without significant improvement
 
-        super().__init__(problem_obj)
-        self.env = env
-        plt.ion()
+        # Initialize Q-table with zeros, dimensions: [state_size, action_size]
+        self.q_table = np.zeros((self.state_size, self.action_size))
+
+        # For plotting
+        self.x = [0]
+        self.y = [0]
+        self.moving_avg_y = [0]
+        self.setup_plot()
+
+    def setup_plot(self):
+        """Initializes the plot."""
+        plt.ion()  # Interactive mode on
         self.fig, self.ax = plt.subplots()
-        # Enable interactive mode
-        self.graph = plt.plot([], [])[0]
-        # plt.ylim(0, 10)
-        self.x, self.y = [0], [0]
-        self.moving_avg_y = [0]  # List to store moving averages
-        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--', label='Moving Average')
-        self.ax.set_title('Rewards per Episode')
-        self.ax.set_xlabel('Episode')
-        self.ax.set_ylabel('Reward')
-        self.ax.grid(True)
-        self.ax.legend()
-        self.annotation = None  # Placeholder for the annotation obje
-    def algorithm(self, exploration_rate, lr, discount_factor=0.99):
-        """
+        self.graph, = plt.plot(self.x, self.y, color='g', label='Rewards')
+        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
+                                          label=f'Moving Average (Period: {self.moving_average_period})')
+        self.annotation = self.ax.annotate('', xy=(0, 0), xytext=(5, 5), textcoords='offset points')
+        plt.xlabel('Episodes')
+        plt.ylabel('Total Reward')
+        plt.title('Training Performance')
+        plt.legend()
+        plt.show()
 
-        """
-        main_exploration_rate = exploration_rate
-        ep_count = 0
-        all_rewards = []
-        while True:
-            test_ep = ep_count%10 ==0 and ep_count!=0
-            if test_ep:
-                exploration_rate = 0
-            else:
-                exploration_rate = main_exploration_rate
-            state = self.env.reset()
-            # self.env.render()
-            ep_rewards = 0
-            steps_count = 0
-            while True:
+    def state_to_index(self, state):
+        """Convert (x, y) state to a single index."""
+        x, y = state
+        return x * self.env.width + y
 
-                action,rand = self.get_epsilon_greedy_action(state, exploration_rate)
-                next_state, reward, terminal = self.env.step(action)
-                steps_count +=1
-                # self.env.render()
-                ep_rewards += reward
-                if reward ==-100 and test_ep :
-                    pass
-                _, best_next_state_action_value =  self.get_best_action(state,discount_factor)
-                self.V[(state, action)] = (self.V.get((state, action), 0) +
-                                           lr * (reward + discount_factor * best_next_state_action_value -
-                                                 self.V.get((state, action),
-                                                            0)))  # Update the state value with the best action value
-                state =next_state
-                if self.env.is_terminal(state):
-                    ep_count +=1
-                    # self.plot_q_values()
-                    break
-            if  test_ep:
-                all_rewards.append(ep_rewards)
-                self.plot_rewards(ep_rewards)
-
-    def get_epsilon_greedy_action(self, state, exploration_rate):
-        # explore
-        if random.random() < exploration_rate:
-            return random.choice(self.get_allowed_actions(state)) ,True
-        # exploit
+    def choose_action(self, state):
+        """Choose an action based on epsilon-greedy policy."""
+        state_index = self.state_to_index(state)
+        if np.random.rand() <= self.epsilon:
+            return random.choice(self.env.get_allowed_actions(state))
         else:
-            next_action, _ = self.get_best_action(state, 1)
-            return next_action,False
+            return np.argmax(self.q_table[state_index])
+
+    def learn(self, state, action, reward, next_state, done):
+        """Update Q-values using the Q-learning formula."""
+        state_index = self.state_to_index(state)
+        next_state_index = self.state_to_index(next_state)
+
+        best_next_action = np.argmax(self.q_table[next_state_index])
+        td_target = reward + self.discount_factor * self.q_table[next_state_index][best_next_action] * (1 - done)
+        td_error = td_target - self.q_table[state_index][action]
+        self.q_table[state_index][action] += self.learning_rate * td_error
+
+        # Decay epsilon to reduce exploration over time
+        if done:
+            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def compute_moving_average(self, data, window_size=3):
         """Compute the moving average of the data."""
         if len(data) < window_size:
             return sum(data) / len(data)
         return sum(data[-window_size:]) / window_size
-    def plot_rewards(self, reward):
-        """Plot the list of rewards per episode with a moving average line."""
+
+    def plot_rewards(self, reward, episode, patience):
+        """Plot the list of rewards per episode with a moving average line and early stopping info."""
         # Update the data
         self.y.append(reward)
         self.x.append(self.x[-1] + 1)
 
         # Compute the moving average and update the moving average data
-        moving_avg = self.compute_moving_average(self.y,window_size=100)
+        moving_avg = self.compute_moving_average(self.y, window_size=self.moving_average_period)
         self.moving_avg_y.append(moving_avg)
 
         # Remove the older graphs
@@ -97,7 +92,8 @@ class QLearn(PolicyOrValueIteration):
 
         # Plot the updated graph and moving average
         self.graph, = plt.plot(self.x, self.y, color='g', label='Rewards')
-        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--', label='Moving Average')
+        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
+                                          label=f'Moving Average (Period: {self.moving_average_period})')
 
         # Annotate the last value of the moving average
         if self.annotation:
@@ -109,36 +105,69 @@ class QLearn(PolicyOrValueIteration):
                                            fontsize=10,
                                            color='blue')
 
+        # Update the title to include early stopping information
+        self.ax.set_title(
+            f'Training Performance\nEpisode: {episode + 1}, Early Stopping: {self.early_stopping}/{patience}')
+
+        # Update the legend to reflect changes
+        plt.legend()
+
         # Redraw the plot with updated data
         plt.pause(0.0001)
-    def get_action_value(self, state: any, action: any, gamma: float) -> float:
-        if (state, action) in self.V:
-            return self.V[(state, action)]
-        else:
-            return 0
 
-    # def plot_q_values(self):
-    #     """Visualize the Q-values on a grid."""
-    #     fig2, ax2 = plt.subplots(self.env.width, self.env.height, figsize=(15, 5))
-    #
-    #     for i in range(self.env.width):
-    #         for j in range( self.env.height):
-    #             allowed_actions = self.get_allowed_actions((i,j))
-    #             state_q_values = {}
-    #             for action in allowed_actions:
-    #                 state_q_values[action] = self.V.get(((i, j),action),0)
-    #
-    #             # Create an arrow plot to represent the action Q-values
-    #             ax2[i, j].quiver([0, 0, 0, 0], [0, 0, 0, 0],
-    #                             [0, 1, 2, 0],
-    #                             [3, 0, 0,-4],
-    #                             scale=1.5, scale_units='xy', angles='xy', color=['r', 'g', 'b', 'y'])
-    #
-    #             ax2[i, j].set_xticks([])
-    #             ax2[i, j].set_yticks([])
-    #             ax2[i, j].set_xlim(-0.5, 0.5)
-    #             ax2[i, j].set_ylim(-0.5, 0.5)
-    #             ax2[i, j].invert_yaxis()  # Make the y-axis point upwards to match the grid orientation
-    #
-    #     plt.tight_layout()
-    #     plt.show()
+    def check_early_stopping(self, patience=10, min_delta=1.0):
+        """Check if training should stop early based on moving average."""
+        recent_avg = self.moving_avg_y[-1]
+        past_avg = self.moving_avg_y[-2]
+        # Check if the improvement is less than min_delta
+        if recent_avg - past_avg < min_delta:
+            self.early_stopping += 1
+        else:
+            self.early_stopping = 0
+        if self.early_stopping == patience:
+            return True
+        return False
+
+    def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0):
+        """Train the agent for a specified number of episodes."""
+        for episode in range(episodes):
+            state = self.env.reset()
+            total_reward = 0
+
+            for step in range(max_steps):
+                action = self.choose_action(state)
+                next_state, reward, done = self.env.step(action)
+
+                self.learn(state, action, reward, next_state, done)
+
+                state = next_state
+                total_reward += reward
+
+                if done:
+                    break
+
+            # Plot the performance after each episode
+            self.plot_rewards(total_reward, episode, patience)
+
+            # Check for early stopping and print progress
+            early_stop = self.check_early_stopping(patience, min_delta)
+
+            # Print training progress
+            print(
+                f"Episode: {episode + 1}, Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, Early Stopping: {self.early_stopping}/{patience}")
+
+            if early_stop:
+                print(f"Early stopping triggered at episode {episode + 1}.")
+                break
+
+        # Keep the plot open after training
+        plt.ioff()
+        plt.show()
+
+
+if __name__ == '__main__':
+
+    # Example usage with the CliffWalkingEnv:
+    env = CliffWalkingEnv()
+    agent = QLearningAgent(env)
+    agent.train(episodes=5000, patience=1000, min_delta=1)
