@@ -3,67 +3,64 @@ import random
 
 from matplotlib import pyplot as plt
 
-from envs import CliffWalkingEnv
-from fantasyPL.generic_code.Q_anda_Sarsa import QandSARSAAgent
+from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent
+from fantasyPL.generic_code.envs import SelectorGameMini
+from fantasyPL.generic_code.policy_iteration import PolicyIteration
+from fantasyPL.generic_code.value_iteration import ValueIteration
 
 
-class QLearningAgent(QandSARSAAgent):
+class QLearningAgent(GenericAgent):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
 
     def learn(self, state, action, reward, next_state, done):
         """Update Q-values using the Q-learning formula."""
-        state_index = self.state_to_index(state)
-        next_state_index = self.state_to_index(next_state)
-
-        best_next_action = np.argmax(self.q_table[next_state_index])
-        td_target = reward + self.discount_factor * self.q_table[next_state_index][best_next_action] * (1 - done)
-        td_error = td_target - self.q_table[state_index][action]
-        self.q_table[state_index][action] += self.learning_rate * td_error
-
-        # Decay epsilon to reduce exploration over time
-        if done:
-            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        super().learn(state, action, reward,
+                     next_state, done, next_action=None, sarsa=False)
 
     def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0):
-        """Train the Q-learning agent for a specified number of episodes."""
-        for episode in range(episodes):
-            state = self.env.reset()
-            total_reward = 0
-
-            for step in range(max_steps):
-                action = self.choose_action(state)
-                next_state, reward, done = self.env.step(action)
-
-                self.learn(state, action, reward, next_state, done)
-
-                state = next_state
-                total_reward += reward
-
-                if done:
-                    break
-
-            # Plot the performance after each episode
-            self.plot_rewards(total_reward, episode, patience)
-
-            # Check for early stopping and print progress
-            early_stop = self.check_early_stopping(patience, min_delta)
-
-            # Print training progress
-            print(f"Episode: {episode + 1}, Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, Early Stopping: {self.early_stopping}/{patience}")
-
-            if early_stop:
-                print(f"Early stopping triggered at episode {episode + 1}.")
-                break
-
-        # Keep the plot open after training
-        plt.ioff()
-        plt.show()
+        """Train the SARSA agent for a specified number of episodes."""
+        super().train(episodes, max_steps, patience, min_delta, sarsa=False)
 
 
 if __name__ == '__main__':
+    scores = {
+        "A": {1: 2, 2: 335, 3: 1, 4: 16, 5: 5},
+        "B": {1: 9, 2: 5, 3: 6, 4: 5, 5: 6},
+        "C": {1: 1, 2: 8, 3: 1, 4: 8, 5: 9},
+        "D": {1: 8, 2: 7, 3: 8, 4: 7, 5: 8},
+        "E": {1: 4, 2: 7, 3: 5, 4: 8, 5: 4}
+    }
+    simple_scores = {
+        "A": {1: 2, 2: 8},
+        "B": {1: 9, 2: 5},
+        "C": {1: 5, 2: 7}
+    }
+    # scores = simple_scores
+
+    ALL_OPTIONS = list(scores.keys())
+    ROUNDS = len(scores[ALL_OPTIONS[0]].keys())
+    initial_selection_size = 2
+    env = SelectorGameMini(ALL_OPTIONS, range(1, ROUNDS), scores, initial_selection_size)
+
+    pi = PolicyIteration(env)
+    vi = ValueIteration(env)
+    v, policy, strat, best_score = pi.run(gamma=1.0, epsilon=0.0001)
+    v2, policy2, strat2, best_score2 = vi.run(gamma=1.0, epsilon=0.0001)
+    assert strat == strat2
+    assert v == v2
+    assert policy.policy == policy2.policy
+    assert best_score == best_score2
+
+
+
+
 
     # Example usage with the CliffWalkingEnv:
-    env = CliffWalkingEnv()
-    agent = QLearningAgent(env)
-    agent.train(episodes=5000, patience=1000, min_delta=1)
+    # env = CliffWalkingEnv()
+    agent = QLearningAgent(env,epsilon_min=0.1)
+    agent.train(episodes=4000, patience=1000, min_delta=1)
+    # agent.print_policy()
+    q_strat,value = agent.run_policy(policy=agent.get_policy())
+
+

@@ -1,7 +1,7 @@
-from tests.test_generic_code import Example
+from tests.test_generic_code import SelectorGameMini
 
 
-class FantasyPL(Example):
+class FantasyPL(SelectorGameMini):
     def is_legal_selection(self, selection):
         # rnd, selection = state
         conds = [len([x for x in selection if x in ['A', 'E']]) < 2,

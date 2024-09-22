@@ -1,9 +1,16 @@
 import os
+import pprint
 from itertools import combinations
 
 import time
 from functools import wraps
 
+def print_list_of_dicts(list_of_dicts):
+    """Print a list of dictionaries in a nicely formatted way."""
+    pp = pprint.PrettyPrinter(indent=4)
+    for i, d in enumerate(list_of_dicts):
+        print(f"{i + 1}:")
+        pp.pprint(d)
 def timing_decorator(func):
     @wraps(func)
     def wrapper(*args, **kwargs):

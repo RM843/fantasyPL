@@ -1,9 +1,10 @@
+from fantasyPL.generic_code.envs import SelectorGameMini, CliffWalkingEnv
 from fantasyPL.generic_code.find_max_leaf_binary_tree import mcts_playout
 from fantasyPL.generic_code.monte_carlo_pure import monte_carlo_policy_evaluation
 from fantasyPL.generic_code.policy_iteration import PolicyIteration
-from fantasyPL.generic_code.q_learning import QLearn
+# from fantasyPL.generic_code.q_learning import QLearn
 from fantasyPL.generic_code.reinforment_learning import Policy, INITIAL_STATE
-from fantasyPL.generic_code.sarsa import Sarsa
+# from fantasyPL.generic_code.sarsa import Sarsa
 from fantasyPL.generic_code.value_iteration import ValueIteration
 import numpy as np
 
@@ -49,7 +50,7 @@ def check_policy_it_equals_value_it():
     ALL_OPTIONS = list(scores.keys())
     ROUNDS = len(scores[ALL_OPTIONS[0]].keys())
     initial_selection_size = 2
-    problem_obj = Example(ALL_OPTIONS, range(1, ROUNDS), scores, initial_selection_size)
+    problem_obj = SelectorGameMini(ALL_OPTIONS, range(1, ROUNDS), scores, initial_selection_size)
 
     pi = PolicyIteration(problem_obj)
     vi = ValueIteration(problem_obj)
