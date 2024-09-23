@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     ALL_OPTIONS = list(scores.keys())
     ROUNDS = len(scores[ALL_OPTIONS[0]].keys())
-    initial_selection_size = 2
+    initial_selection_size = 4
     env = SelectorGameMini(ALL_OPTIONS, range(1, ROUNDS), scores, initial_selection_size)
 
     pi = PolicyIteration(env)

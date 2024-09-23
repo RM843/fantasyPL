@@ -78,8 +78,10 @@ class GenericAgent(abc.ABC):
 
     def initialize_q_value(self, state):
         """Initialize Q-values for the given state if not already done."""
+        if state is None:
+            return
         if state not in self.q_table:
-            self.q_table[state] = {action: 0 for action in self.env.get_allowed_actions(state)}
+            self.q_table[state] =  0#{action: 0 for action in self.env.get_allowed_actions(state)}
 
     def validate_action(self, state, action):
         """Ensure the action is valid for the given state."""
@@ -92,10 +94,15 @@ class GenericAgent(abc.ABC):
         """Choose an action based on epsilon-greedy policy."""
         start_time = time.time()
 
-        if (np.random.rand() <= self.epsilon) or (state not in self.q_table):
+        if (np.random.rand() <= self.epsilon):
             action = random.choice(self.env.get_allowed_actions(state))
         else:
-            action = max(self.q_table[state], key=self.q_table[state].get)
+            # Choose the action with the maximum Q-value for the afterstate
+            q_values = {}
+            for action in self.env.get_allowed_actions(state):
+
+                q_values[action] = self.q_table.get( self.afterstate(state, action), 0)
+            action = max(q_values, key=q_values.get)
         self.time_spent['action_selection'] += time.time() - start_time
         return action
 
@@ -211,6 +218,14 @@ class GenericAgent(abc.ABC):
             proportion = (value / total_time) * 100
             print(f"{key.capitalize()}: {proportion:.2f}% of training time")
 
+    def afterstate(self,state,action):
+        if self.env.is_terminal(state):
+            return None
+
+        after_state = self.env.transition_model( state, action)
+        return after_state
+
+
     def learn(self, state, action, reward, next_state, done, next_action=None, sarsa=False):
         """Update Q-values using either the SARSA or Q-learning formula."""
         self.initialize_q_value(state)
@@ -219,27 +234,31 @@ class GenericAgent(abc.ABC):
         self.validate_action(state, action)
         if sarsa:
             pass
-            # # if next_action is None:
-            # #     raise ValueError("Next action must be provided for SARSA.")
-            # # self.validate_action(next_state, next_action)
-            # q_value = self.q_table[next_state][next_action] if next_action is not None else 0
-            # # SARSA update
-            # td_target = reward + self.discount_factor *  * (1 - done)
+
         else:  # Q-learning update
             next_action = self.get_best_action(next_state)
-        q_value = self.q_table[next_state][next_action] if next_action is not None else 0
+        next_afterstate = self.afterstate(next_state, next_action)
+        self.initialize_q_value(next_afterstate)
+
+        q_value = self.q_table[next_afterstate] if next_afterstate is not None else 0
         td_target = reward + self.discount_factor * q_value * (1 - done)
+        afterstate = self.afterstate(state, action)
+        td_error = td_target - self.q_table.get(afterstate , 0)
 
-        td_error = td_target - self.q_table[state][action]
-
-        self.q_table[state][action] += self.learning_rate * td_error
+        self.q_table[afterstate] += self.learning_rate * td_error
 
         # Decay epsilon
         if done:
             decay_rate = (self.epsilon - self.epsilon_min) /( self.episodes/2)
             self.epsilon = max(self.epsilon_min, self.epsilon - decay_rate)
     def get_best_action(self,state):
-        return max(self.q_table[state], key=self.q_table[state].get) if self.q_table[state] else None
+        """Return the action that has the highest Q-value for the given state."""
+        allowed_actions = self.env.get_allowed_actions(state)
+        q_values = {}
+        for action in allowed_actions:
+            afterstate = self.afterstate(state, action)
+            q_values[action] = self.q_table.get(afterstate, 0)
+        return max(q_values, key=q_values.get) if q_values else None
     def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0, sarsa=False):
         """Train the agent for a specified number of episodes."""
         self.episodes = episodes  # Set total number of episodes for the decay calculation

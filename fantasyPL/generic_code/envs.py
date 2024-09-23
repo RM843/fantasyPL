@@ -163,9 +163,9 @@ class SelectorGameMini:
         return all(conds)
 
     # @timing_decorator
-    def transition_model(self, state, action, start_state):
+    def transition_model(self, state, action, start_state=None):
         assert not state[0] == self.rounds.stop
-        if start_state:
+        if self.initial_state==state:
             rnd = self.rounds.start - 1
             selection = action
             option = None
