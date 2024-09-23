@@ -7,6 +7,7 @@ from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent
 from fantasyPL.generic_code.envs import SelectorGameMini
 from fantasyPL.generic_code.policy_iteration import PolicyIteration
 from fantasyPL.generic_code.value_iteration import ValueIteration
+from helper_methods import print_list_of_dicts
 
 
 class QLearningAgent(GenericAgent):
@@ -59,8 +60,10 @@ if __name__ == '__main__':
     # Example usage with the CliffWalkingEnv:
     # env = CliffWalkingEnv()
     agent = QLearningAgent(env,epsilon_min=0.1)
-    agent.train(episodes=4000, patience=1000, min_delta=1)
+    agent.train(episodes=400000, patience=10000, min_delta=1)
     # agent.print_policy()
     q_strat,value = agent.run_policy(policy=agent.get_policy())
+    print_list_of_dicts(q_strat)
+    print(f"Total Reward = {value}")
 
 

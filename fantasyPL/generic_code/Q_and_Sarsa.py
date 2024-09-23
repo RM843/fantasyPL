@@ -6,9 +6,7 @@ import matplotlib.pyplot as plt
 import random
 import abc
 
-from helper_methods import print_list_of_dicts
-
-
+REFRESH_RATE = 5 # how often the plot updates (Seconds)
 class GenericAgent(abc.ABC):
     def __init__(self, env, learning_rate=0.1, discount_factor=0.99, epsilon=1.0, epsilon_decay=0.995,
                  epsilon_min=0.01, moving_average_period=100):
@@ -30,6 +28,8 @@ class GenericAgent(abc.ABC):
         # For plotting
         self.x = [0]
         self.y = [0]
+        self.epsilon_values = [epsilon]
+        self.policy_scores = [0]
         self.moving_avg_y = [0]
         self.setup_plot()
 
@@ -42,17 +42,34 @@ class GenericAgent(abc.ABC):
         }
 
     def setup_plot(self):
-        """Initializes the plot."""
+        """Initializes the plot with a secondary axis for epsilon values and policy scores."""
         plt.ion()  # Interactive mode on
-        self.fig, self.ax = plt.subplots()
-        self.graph, = plt.plot(self.x, self.y, color='g', label='Rewards')
-        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
-                                          label=f'Moving Average (Period: {self.moving_average_period})')
-        self.annotation = self.ax.annotate('', xy=(0, 0), xytext=(5, 5), textcoords='offset points')
-        plt.xlabel('Episodes')
-        plt.ylabel('Total Reward')
-        plt.title('Training Performance')
-        plt.legend()
+        self.fig, self.ax1 = plt.subplots(figsize=(12, 8))  # Adjust the figure size here (width, height)
+        self.ax2 = self.ax1.twinx()  # Create a secondary y-axis
+
+        # Primary axis for rewards and policy scores
+        self.graph, = self.ax1.plot(self.x, self.y, color='g', label='Rewards')
+        self.moving_avg_graph, = self.ax1.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
+                                               label=f'Moving Average (Period: {self.moving_average_period})')
+        self.policy_score_graph, = self.ax1.plot(self.x, self.policy_scores, color='m', linestyle=':',
+                                                 label='Policy Score')
+
+        # Secondary axis for epsilon values
+        self.epsilon_graph, = self.ax2.plot(self.x, self.epsilon_values, color='r', linestyle='-.', label='Epsilon')
+
+        self.annotation = self.ax1.annotate('', xy=(0, 0), xytext=(5, 5), textcoords='offset points')
+        self.policy_annotation = self.ax1.annotate('', xy=(0, 0), xytext=(5, -10),
+                                                   textcoords='offset points')  # New annotation for policy score
+
+        # Axis labels and title
+        self.ax1.set_xlabel('Episodes')
+        self.ax1.set_ylabel('Total Reward / Policy Score')
+        self.ax2.set_ylabel('Epsilon')
+        self.ax1.set_title('Training Performance')
+
+        # Legends for both axes
+        self.ax1.legend(loc='upper left')
+        self.ax2.legend(loc='upper right')
         plt.show()
 
     def state_to_index(self, state):
@@ -66,17 +83,17 @@ class GenericAgent(abc.ABC):
 
     def validate_action(self, state, action):
         """Ensure the action is valid for the given state."""
+        if self.env.is_terminal(state):
+            return
         allowed_actions = self.env.get_allowed_actions(state)
         if action not in allowed_actions:
             raise ValueError(f"Action {action} is not allowed in state {state}. Allowed actions: {allowed_actions}")
     def choose_action(self, state):
         """Choose an action based on epsilon-greedy policy."""
         start_time = time.time()
-        # if state not in self.q_table:
-        #     self.q_table[state] = np.zeros(len(self.env.get_allowed_actions(state)))
 
         if (np.random.rand() <= self.epsilon) or (state not in self.q_table):
-            action =  random.choice(self.env.get_allowed_actions(state))
+            action = random.choice(self.env.get_allowed_actions(state))
         else:
             action = max(self.q_table[state], key=self.q_table[state].get)
         self.time_spent['action_selection'] += time.time() - start_time
@@ -88,42 +105,69 @@ class GenericAgent(abc.ABC):
             return sum(data) / len(data)
         return sum(data[-window_size:]) / window_size
 
-    def plot_rewards(self, reward, episode, patience,show):
-        """Plot the list of rewards per episode with a moving average line and early stopping info."""
+    def plot_rewards(self, reward, episode, patience, show):
+        """Plot the list of rewards per episode with a moving average line, policy score, and early stopping info."""
         start_time = time.time()
         # Update the data
         self.y.append(reward)
         self.x.append(self.x[-1] + 1)
+        self.epsilon_values.append(self.epsilon)  # Append current epsilon value
+
+        # Run the policy to get the policy score only if `show` is True
+        if show:
+            policy = self.get_policy()
+            _,policy_score = self.run_policy(policy)
+        else:
+            policy_score = self.policy_scores[-1]  # Repeat the last policy score if not shown
+
+        self.policy_scores.append(policy_score)  # Append the current policy score when `show` is True
 
         # Compute the moving average and update the moving average data
         moving_avg = self.compute_moving_average(self.y, window_size=self.moving_average_period)
         self.moving_avg_y.append(moving_avg)
+        if not show:
+            return
 
         # Remove the older graphs
         self.graph.remove()
         self.moving_avg_graph.remove()
+        self.epsilon_graph.remove()
+        self.policy_score_graph.remove()
 
         # Plot the updated graph and moving average
-        self.graph, = plt.plot(self.x, self.y, color='g', label='Rewards')
-        self.moving_avg_graph, = plt.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
-                                          label=f'Moving Average (Period: {self.moving_average_period})')
+        self.graph, = self.ax1.plot(self.x, self.y, color='g', label='Rewards')
+        self.moving_avg_graph, = self.ax1.plot(self.x, self.moving_avg_y, color='b', linestyle='--',
+                                               label=f'Moving Average (Period: {self.moving_average_period})')
+        self.policy_score_graph, = self.ax1.plot(self.x, self.policy_scores, color='m', linestyle=':', label='Policy Score')
+        self.epsilon_graph, = self.ax2.plot(self.x, self.epsilon_values, color='r', linestyle='-.', label='Epsilon')
 
         # Annotate the last value of the moving average
         if self.annotation:
             self.annotation.remove()
-        self.annotation = self.ax.annotate(f'{moving_avg:.2f}',
-                                           xy=(self.x[-1], self.moving_avg_y[-1]),
-                                           xytext=(5, 5),
-                                           textcoords='offset points',
-                                           fontsize=10,
-                                           color='blue')
+        self.annotation = self.ax1.annotate(f'{moving_avg:.2f}',
+                                            xy=(self.x[-1], self.moving_avg_y[-1]),
+                                            xytext=(5, 5),
+                                            textcoords='offset points',
+                                            fontsize=10,
+                                            color='blue')
+
+        # Annotate the last value of the policy score
+        if self.policy_annotation:
+            self.policy_annotation.remove()
+        self.policy_annotation = self.ax1.annotate(f'{policy_score:.2f}',
+                                                   xy=(self.x[-1], self.policy_scores[-1]),
+                                                   xytext=(5, -10),
+                                                   textcoords='offset points',
+                                                   fontsize=10,
+                                                   color='magenta')
 
         # Update the title to include early stopping information
-        self.ax.set_title(
+        self.ax1.set_title(
             f'Training Performance\nEpisode: {episode + 1}, Early Stopping: {self.early_stopping}/{patience}')
 
-        # Update the legend to reflect changes
-        plt.legend()
+        # Update the legends to reflect changes
+        self.ax1.legend(loc='upper left')
+        self.ax2.legend(loc='upper right')
         if show:
             # Redraw the plot with updated data
             plt.pause(0.0001)
@@ -174,16 +218,17 @@ class GenericAgent(abc.ABC):
         # Validate actions
         self.validate_action(state, action)
         if sarsa:
-            if next_action is None:
-                raise ValueError("Next action must be provided for SARSA.")
-            self.validate_action(next_state, next_action)
-
-            # SARSA update
-            td_target = reward + self.discount_factor * self.q_table[next_state][next_action] * (1 - done)
+            pass
+            # # if next_action is None:
+            # #     raise ValueError("Next action must be provided for SARSA.")
+            # # self.validate_action(next_state, next_action)
+            # q_value = self.q_table[next_state][next_action] if next_action is not None else 0
+            # # SARSA update
+            # td_target = reward + self.discount_factor *  * (1 - done)
         else:  # Q-learning update
-            best_next_action = self.get_best_action(next_state)
-            q_value = self.q_table[next_state][best_next_action] if best_next_action is not None else 0
-            td_target = reward + self.discount_factor * q_value * (1 - done)
+            next_action = self.get_best_action(next_state)
+        q_value = self.q_table[next_state][next_action] if next_action is not None else 0
+        td_target = reward + self.discount_factor * q_value * (1 - done)
 
         td_error = td_target - self.q_table[state][action]
 
@@ -191,11 +236,15 @@ class GenericAgent(abc.ABC):
 
         # Decay epsilon
         if done:
-            self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+            decay_rate = (self.epsilon - self.epsilon_min) /( self.episodes/2)
+            self.epsilon = max(self.epsilon_min, self.epsilon - decay_rate)
     def get_best_action(self,state):
         return max(self.q_table[state], key=self.q_table[state].get) if self.q_table[state] else None
     def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0, sarsa=False):
         """Train the agent for a specified number of episodes."""
+        self.episodes = episodes  # Set total number of episodes for the decay calculation
+        start_time = time.time()
+        show = True
         for episode in range(episodes):
             state = self.env.reset()
             action = self.choose_action(state) if sarsa else None  # Only for SARSA
@@ -204,7 +253,10 @@ class GenericAgent(abc.ABC):
             for step in range(max_steps):
                 if sarsa:
                     next_state, reward, done = self.env.step(action)
-                    next_action = self.choose_action(next_state)
+                    if not done:
+                        next_action = self.choose_action(next_state)
+                    else:
+                        next_action = None # Assuming env has no actions after terminal state
                     self.learn(state, action, reward, next_state, next_action, done)
                     state, action = next_state, next_action
                 else:
@@ -217,16 +269,18 @@ class GenericAgent(abc.ABC):
 
                 if done:
                     break
+            if time.time() - start_time > REFRESH_RATE:
+                show = True
+                start_time = time.time()
 
-            # Plot the performance after each episode
-            self.plot_rewards(total_reward, episode, patience, show=episode % 100 == 0)
+
+
+            # Plot the performance after each episode, but update policy score only if `show` is True
+            self.plot_rewards(total_reward, episode, patience, show=show)
+            show = False
 
             # Check for early stopping and print progress
             early_stop = self.check_early_stopping(patience, min_delta)
-
-            # Print training progress
-            # print(
-            #     f"Episode: {episode + 1}, Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, Early Stopping: {self.early_stopping}/{patience}")
 
             if early_stop:
                 print(f"Early stopping triggered at episode {episode + 1}.")
@@ -234,6 +288,7 @@ class GenericAgent(abc.ABC):
 
         # Print time breakdown after training is complete
         self.print_time_breakdown()
+        self.plot_rewards(total_reward, episode, patience, show=True)
         # Keep the plot open after training
         plt.ioff()
         plt.show()
@@ -251,8 +306,10 @@ class GenericAgent(abc.ABC):
         # Continue generating the strategy until reaching a final state
         while True:
             if state not in policy:
-                return None
-            action = policy[state]  # Get the best action and its value for the current state
+                action = random.choice(self.env.get_allowed_actions(state))
+            else:
+
+                action = policy[state]  # Get the best action and its value for the current state
 
 
 
@@ -264,6 +321,5 @@ class GenericAgent(abc.ABC):
             state = next_state
             if done:
                 break
-        print_list_of_dicts(strat)
-        print(f"Total Reward = {total_reward}")
-        return strat ,reward
+
+        return strat ,total_reward
