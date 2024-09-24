@@ -19,9 +19,9 @@ class QLearningAgent(GenericAgent):
         super().learn(state, action, reward,
                      next_state, done, next_action=None, sarsa=False)
 
-    def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0):
+    def train(self,  max_steps=100, patience=10, min_delta=1.0):
         """Train the SARSA agent for a specified number of episodes."""
-        super().train(episodes, max_steps, patience, min_delta, sarsa=False)
+        super().train( max_steps, patience, min_delta, sarsa=False)
 
 
 if __name__ == '__main__':
@@ -59,8 +59,9 @@ if __name__ == '__main__':
 
     # Example usage with the CliffWalkingEnv:
     # env = CliffWalkingEnv()
-    agent = QLearningAgent(env,epsilon_min=0.1)
-    agent.train(episodes=400000, patience=10000, min_delta=1)
+    agent = QLearningAgent(env,epsilon_min=0.1,episodes=400000)
+    agent.train(
+        patience=10000, min_delta=1)
     # agent.print_policy()
     q_strat,value = agent.run_policy(policy=agent.get_policy())
     print_list_of_dicts(q_strat)

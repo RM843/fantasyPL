@@ -6,18 +6,21 @@ import matplotlib.pyplot as plt
 import random
 import abc
 
+from fantasyPL.generic_code.epsilion_decay import EpsilonDecay
+
 REFRESH_RATE = 5 # how often the plot updates (Seconds)
 class GenericAgent(abc.ABC):
     def __init__(self, env, learning_rate=0.1, discount_factor=0.99, epsilon=1.0, epsilon_decay=0.995,
-                 epsilon_min=0.01, moving_average_period=100):
+                 epsilon_min=0.01, moving_average_period=100,episodes=100):
         self.env = env  # The environment object
         # self.state_size = env.state_size  # Total number of states in the environment
         # self.action_size = env.action_size  # Total number of actions in the environment
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min
+        self.episodes = episodes
+        # Initialize EpsilonDecay object
+        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes)
+
         self.moving_average_period = moving_average_period  # Period for moving average
         self.early_stopping = 0  # Tracks consecutive episodes without significant improvement
 
@@ -94,15 +97,14 @@ class GenericAgent(abc.ABC):
         """Choose an action based on epsilon-greedy policy."""
         start_time = time.time()
 
-        if (np.random.rand() <= self.epsilon):
+        if (np.random.rand() <= self.epsilon_decay.get_epsilon()):
             action = random.choice(self.env.get_allowed_actions(state))
         else:
-            # Choose the action with the maximum Q-value for the afterstate
-            q_values = {}
-            for action in self.env.get_allowed_actions(state):
-
-                q_values[action] = self.q_table.get( self.afterstate(state, action), 0)
+            # Choose the action with the maximum Q-value
+            q_values = {action: self.q_table.get(self.afterstate(state, action), 0)
+                        for action in self.env.get_allowed_actions(state)}
             action = max(q_values, key=q_values.get)
+
         self.time_spent['action_selection'] += time.time() - start_time
         return action
 
@@ -118,7 +120,7 @@ class GenericAgent(abc.ABC):
         # Update the data
         self.y.append(reward)
         self.x.append(self.x[-1] + 1)
-        self.epsilon_values.append(self.epsilon)  # Append current epsilon value
+        self.epsilon_values.append(self.epsilon_decay.epsilon)  # Append current epsilon value
 
         # Run the policy to get the policy score only if `show` is True
         if show:
@@ -249,8 +251,8 @@ class GenericAgent(abc.ABC):
 
         # Decay epsilon
         if done:
-            decay_rate = (self.epsilon - self.epsilon_min) /( self.episodes/2)
-            self.epsilon = max(self.epsilon_min, self.epsilon - decay_rate)
+            current_episode = len(self.x)  # Use episode count to influence decay
+            self.epsilon_decay.decay(done, current_episode)
     def get_best_action(self,state):
         """Return the action that has the highest Q-value for the given state."""
         allowed_actions = self.env.get_allowed_actions(state)
@@ -259,12 +261,12 @@ class GenericAgent(abc.ABC):
             afterstate = self.afterstate(state, action)
             q_values[action] = self.q_table.get(afterstate, 0)
         return max(q_values, key=q_values.get) if q_values else None
-    def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0, sarsa=False):
+    def train(self, max_steps=100, patience=10, min_delta=1.0, sarsa=False):
         """Train the agent for a specified number of episodes."""
-        self.episodes = episodes  # Set total number of episodes for the decay calculation
+
         start_time = time.time()
         show = True
-        for episode in range(episodes):
+        for episode in range(self.episodes):
             state = self.env.reset()
             action = self.choose_action(state) if sarsa else None  # Only for SARSA
             total_reward = 0
