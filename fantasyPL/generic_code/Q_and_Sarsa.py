@@ -31,7 +31,7 @@ class GenericAgent(abc.ABC):
         self.episodes = episodes
 
         # Initialize EpsilonDecay object
-        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes)
+        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy="inverse_sigmoid")
 
         self.moving_average_period = moving_average_period  # Period for moving average
         self.early_stopping = 0  # Tracks consecutive episodes without significant improvement

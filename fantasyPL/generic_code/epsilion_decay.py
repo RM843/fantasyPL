@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class EpsilonDecay:
     def __init__(self, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, episodes=1000, strategy="linear"):
         self.epsilon = epsilon

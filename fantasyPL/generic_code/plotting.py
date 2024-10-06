@@ -119,4 +119,34 @@ class TrainingPlotter:
     def finalize_plot(self):
         """Finalize the plot after training."""
         plt.ioff()
-        plt.show()
+        # plt.show()
+
+
+def plot_line_dict(line_dict):
+    """
+    Plots a dictionary of lists, where each key is a line name and each value
+    is a list of two lists: the first for x values, the second for y values.
+
+    Parameters:
+    line_dict (dict): A dictionary where keys are line names (strings)
+                      and values are lists of two lists: [x_values, y_values].
+    """
+    # Create a figure and axis
+    fig, ax = plt.subplots()
+
+    # Set up the color cycle
+    color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Loop through the dictionary and add each line to the plot
+    for i, (name, (x_values, y_values)) in enumerate(line_dict.items()):
+        # Get the color from the cycle
+        color = color_cycle[i % len(color_cycle)]
+
+        # Plot the line with auto-coloring
+        ax.plot(x_values, y_values, label=name, color=color)
+
+    # Add a legend to identify the lines
+    ax.legend()
+
+    # Show the plot
+    plt.show()

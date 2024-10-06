@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 
 from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent
 from fantasyPL.generic_code.envs import SelectorGameMini
+from fantasyPL.generic_code.plotting import plot_line_dict
 from fantasyPL.generic_code.policy_iteration import PolicyIteration
 from fantasyPL.generic_code.value_iteration import ValueIteration
 from helper_methods import print_list_of_dicts
@@ -59,10 +60,19 @@ if __name__ == '__main__':
 
     # Example usage with the CliffWalkingEnv:
     # env = CliffWalkingEnv()
-    agent = QLearningAgent(env,epsilon_min=0.1,episodes=400000)
+    agent = QLearningAgent(env,epsilon_min=0.1,episodes=4000)
     agent.train(
         patience=10000, min_delta=1)
     # agent.print_policy()
+    agent1 = QLearningAgent(env, epsilon_min=0.01, episodes=4000)
+    agent1.train(
+        patience=10000, min_delta=1)
+    lines_dict = {
+        'Line 1':[agent.plotter.moving_avg_graph._x, agent.plotter.moving_avg_graph._y],
+        'Line 2':  [agent1.plotter.moving_avg_graph._x, agent1.plotter.moving_avg_graph._y],
+
+    }
+    plot_line_dict(lines_dict)
     q_strat,value = agent.run_policy(policy=agent.get_policy())
     print_list_of_dicts(q_strat)
     print(f"Total Reward = {value}")
