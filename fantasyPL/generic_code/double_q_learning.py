@@ -1,5 +1,6 @@
 import random
 import time
+from collections import Counter
 from typing import Dict, Any, Optional
 
 import numpy as np
@@ -27,19 +28,34 @@ class DoubleQLearningAgent(GenericAgent):
         # To keep track of which Q-table to update
         self.update_table = 1  # Start with Q1
 
-
-    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
+    def _best_action(self, state: Any, allowed_actions=None) -> Any:
         """Select the best action based on the sum of Q1 and Q2."""
         q_values = {}
+        if self.env.is_terminal(state):
+            return None
+        if allowed_actions is None:
+            allowed_actions = self.env.get_allowed_actions(state)
+
+
         for action in allowed_actions:
-            q1 = self.q_table1.get_q_value(self.q_table1.afterstate(self.env, state, action))
-            q2 = self.q_table2.get_q_value(self.q_table2.afterstate(self.env, state, action))
+            afterstate = self.q_table1.afterstate(self.env, state, action)
+            q1 = self.q_table1.get_q_value(afterstate)
+            q2 = self.q_table2.get_q_value(afterstate)
             q_values[action] = q1 + q2  # Combine Q-values
         max_value = max(q_values.values())
         # In case multiple actions have the same max value, randomly choose among them
         best_actions = [action for action, value in q_values.items() if value == max_value]
         return random.choice(best_actions)
 
+    # def get_q_values(self, state: Any) -> Dict[Any, float]:
+    #     """
+    #     Retrieve Q-values for all allowed actions in the current state
+    #     from the single Q-table.
+    #     """
+    #
+    #     q1 = self.q_table1.get_q_values(state=state, env=self.env)
+    #     q2 = self.q_table2.get_q_values(state=state, env=self.env)
+    #     return {key: q1.get(key, 0) + q2.get(key, 0) for key in set(q1) | set(q2)}
     def learn(
             self,
             state: Any,
@@ -91,6 +107,8 @@ class DoubleQLearningAgent(GenericAgent):
             next_action: Optional[Any]
     ) -> float:
         """Compute the TD target for Double Q-learning."""
+
+        next_action = self._best_action(next_state)
         if self.update_table == 1:
             q_table_primary = self.q_table1
             q_table_secondary = self.q_table2
