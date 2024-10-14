@@ -67,7 +67,7 @@ class GenericAgent(abc.ABC):
 
         return self.q_table.get_q_values(state=state,env=self.env)
 
-    def choose_action(self, state: Any) -> Any:
+    def choose_action_based_on_policy(self, state: Any) -> Any:
         """
         Choose an action based on epsilon-greedy policy using the Q-values.
         This method is unified and shared across all agents.
@@ -88,16 +88,22 @@ class GenericAgent(abc.ABC):
         return action
 
 
-    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
+    def _best_action(self, state: Any, allowed_actions=None) -> Any:
         """
         Determine the best action based on the Q-values for the given state.
         If there are multiple actions with the same max Q-value, one is chosen randomly.
         """
+
         q_values = self.get_q_values(state)
         max_q = max(q_values.values())
         # Handle multiple actions with the same max Q-value
         best_actions = [action for action, q in q_values.items() if q == max_q]
-        return random.choice(best_actions) if best_actions else random.choice(allowed_actions)
+        if best_actions:
+            return random.choice(best_actions)
+        else:
+            if allowed_actions is None:
+                allowed_actions = self.env.get_allowed_actions(state)
+            random.choice(allowed_actions)
     def plot_rewards(
         self,
         reward: float,
@@ -145,7 +151,7 @@ class GenericAgent(abc.ABC):
         """Get the current policy from the Q-table."""
         policy = {}
         for state in self.q_table.q_table:
-            best_action = self.q_table.get_best_action(self.env, state)
+            best_action = self._best_action( state)
             if best_action is not None:
                 policy[state] = best_action
         return policy
@@ -169,11 +175,10 @@ class GenericAgent(abc.ABC):
               next_action: Optional[Any] = None):
         """Generalized learn method with dependency injection for TD calculation."""
         start_time = time.time()
-        self.q_table.initialize_q_value(state)
-        self.q_table.initialize_q_value(next_state)
-        self.validate_action(state, action)
 
-        current_afterstate = self.q_table.afterstate(self.env, state, action)
+        # Initialize Q-values and validate actions
+        current_afterstate = self._initialize(state, action, next_state)
+
         if current_afterstate is None:
             self.time_tracker.add_time('learning', time.time() - start_time)
             return
@@ -182,9 +187,7 @@ class GenericAgent(abc.ABC):
         td_target = self.calculate_td_target(state, action, reward, next_state, done, next_action)
 
         # Update Q-value based on TD error
-        td_error = td_target - self.q_table.get_q_value(current_afterstate)
-        new_q_value = self.q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
-        self.q_table.set_q_value(current_afterstate, new_q_value)
+        self._update(current_afterstate, td_target)
 
         # Decay epsilon
         if done:
@@ -193,6 +196,19 @@ class GenericAgent(abc.ABC):
 
         self.time_tracker.add_time('learning', time.time() - start_time)
 
+    def _initialize(self, state: Any, action: Any, next_state: Any) -> Optional[Any]:
+        """Initialize Q-values and validate actions."""
+        self.q_table.initialize_q_value(state)
+        self.q_table.initialize_q_value(next_state)
+        self.validate_action(state, action)
+
+        return self.q_table.afterstate(self.env, state, action)
+
+    def _update(self, current_afterstate: Any, td_target: float):
+        """Update the Q-value based on the TD target."""
+        td_error = td_target - self.q_table.get_q_value(current_afterstate)
+        new_q_value = self.q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
+        self.q_table.set_q_value(current_afterstate, new_q_value)
     def run_policy(self, policy: Dict[Any, Any]) -> Tuple[List[Dict[str, Any]], float]:
         """Run a policy and return the strategy and total reward."""
         state = self.env.reset()
@@ -231,20 +247,20 @@ class GenericAgent(abc.ABC):
         show = True
         for episode in range(self.episodes):
             state = self.env.reset()
-            action = self.choose_action(state) if sarsa else None  # Only for SARSA
+            action = self.choose_action_based_on_policy(state) if sarsa else None  # Only for SARSA
             total_reward = 0.0
 
             for step in range(max_steps):
                 if sarsa:
                     next_state, reward, done = self.env.step(action)
                     if not done:
-                        next_action = self.choose_action(next_state)
+                        next_action = self.choose_action_based_on_policy(next_state)
                     else:
                         next_action = None  # Assuming env has no actions after terminal state
                     self.learn(state=state, action=action, reward=reward, next_state=next_state, done=done, next_action=next_action)
                     state, action = next_state, next_action
                 else:
-                    action = self.choose_action(state)
+                    action = self.choose_action_based_on_policy(state)
                     next_state, reward, done = self.env.step(action)
                     self.learn(state, action, reward, next_state, done)
                     state = next_state

@@ -27,11 +27,11 @@ class DoubleQLearningAgent(GenericAgent):
         # To keep track of which Q-table to update
         self.update_table = 1  # Start with Q1
 
-    def calculate_td_target(self):
-        pass
-    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
+    def _best_action(self, state: Any, allowed_actions=None) -> Any:
         """Select the best action based on the sum of Q1 and Q2."""
         q_values = {}
+        if allowed_actions is None:
+            allowed_actions = self.env.get_allowed_actions(state)
         for action in allowed_actions:
             q1 = self.q_table1.get_q_value(self.q_table1.afterstate(self.env, state, action))
             q2 = self.q_table2.get_q_value(self.q_table2.afterstate(self.env, state, action))
@@ -42,36 +42,30 @@ class DoubleQLearningAgent(GenericAgent):
         return random.choice(best_actions)
 
     def learn(
-        self,
-        state: Any,
-        action: Any,
-        reward: float,
-        next_state: Any,
-        done: bool,
-        next_action: Optional[Any] = None,
-        sarsa: bool = False
+            self,
+            state: Any,
+            action: Any,
+            reward: float,
+            next_state: Any,
+            done: bool,
+            next_action: Optional[Any] = None,
+            sarsa: bool = False
     ):
-        """Update Q-values using the Double Q-learning formula."""
+        """Generalized learn method with TD target calculation for Double Q-learning."""
         start_time = time.time()
 
         # Validate and initialize Q-values
-        self.q_table1.initialize_q_value(state)
-        self.q_table1.initialize_q_value(next_state)
-        self.q_table2.initialize_q_value(state)
-        self.q_table2.initialize_q_value(next_state)
-        self.validate_action(state, action)
+        self._initialize(state, next_state, action)
 
-        # Determine which Q-table to update
-        if self.update_table == 1:
-            self._update_q_table(
-                self.q_table1, self.q_table2, state, action, reward, next_state, done
-            )
-            self.update_table = 2  # Switch to the other table next time
-        else:
-            self._update_q_table(
-                self.q_table2, self.q_table1, state, action, reward, next_state, done
-            )
-            self.update_table = 1  # Switch back
+        # Choose a random action for next_state from allowed actions
+        allowed_actions = self.env.get_allowed_actions(next_state)
+        next_action = random.choice(allowed_actions) if allowed_actions else None
+
+        # Compute the TD target using both Q-tables
+        td_target = self.calculate_td_target(state, action, reward, next_state, done, next_action)
+
+        # Update the appropriate Q-table with the calculated TD target
+        self._update(state, action, td_target, next_state)
 
         # Decay epsilon
         if done:
@@ -80,25 +74,36 @@ class DoubleQLearningAgent(GenericAgent):
 
         self.time_tracker.add_time('learning', time.time() - start_time)
 
-    def _update_q_table(
-        self,
-        q_table_primary: QTable,
-        q_table_secondary: QTable,
-        state: Any,
-        action: Any,
-        reward: float,
-        next_state: Any,
-        done: bool
-    ):
-        """Update the primary Q-table based on Double Q-learning."""
+    def _initialize(self, state: Any, next_state: Any, action: Any):
+        """Initialize Q-values for both tables and validate the action."""
+        self.q_table1.initialize_q_value(state)
+        self.q_table1.initialize_q_value(next_state)
+        self.q_table2.initialize_q_value(state)
+        self.q_table2.initialize_q_value(next_state)
+        self.validate_action(state, action)
+
+    def calculate_td_target(
+            self,
+            state: Any,
+            action: Any,
+            reward: float,
+            next_state: Any,
+            done: bool,
+            next_action: Optional[Any]
+    ) -> float:
+        """Compute the TD target for Double Q-learning."""
+        if self.update_table == 1:
+            q_table_primary = self.q_table1
+            q_table_secondary = self.q_table2
+        else:
+            q_table_primary = self.q_table2
+            q_table_secondary = self.q_table1
+
         current_afterstate = q_table_primary.afterstate(self.env, state, action)
         if current_afterstate is None:
-            return
+            return 0.0
 
-        # Choose a random action for next_state from allowed actions
-        allowed_actions = self.env.get_allowed_actions(next_state)
-        if allowed_actions:
-            next_action = random.choice(allowed_actions)
+        if next_action is not None:
             next_afterstate = q_table_secondary.afterstate(self.env, next_state, next_action)
             max_q_secondary = q_table_secondary.get_q_value(next_afterstate)
         else:
@@ -106,11 +111,33 @@ class DoubleQLearningAgent(GenericAgent):
 
         # Calculate TD target
         td_target = reward + self.discount_factor * max_q_secondary * (1 - done)
+        return td_target
 
-        # Update Q-value
-        td_error = td_target - q_table_primary.get_q_value(current_afterstate)
-        new_q_value = q_table_primary.get_q_value(current_afterstate) + self.learning_rate * td_error
-        q_table_primary.set_q_value(current_afterstate, new_q_value)
+    def _update(self, state: Any, action: Any, td_target: float, next_state: Any):
+        """Update the appropriate Q-table based on the calculated TD target."""
+        if self.update_table == 1:
+            self._update_q_table(self.q_table1, state, action, td_target)
+            self.update_table = 2  # Switch to the other table next time
+        else:
+            self._update_q_table(self.q_table2, state, action, td_target)
+            self.update_table = 1  # Switch back
+
+    def _update_q_table(
+            self,
+            q_table: QTable,
+            state: Any,
+            action: Any,
+            td_target: float
+    ):
+        """Update the Q-value in the specified Q-table based on the TD target."""
+        current_afterstate = q_table.afterstate(self.env, state, action)
+        if current_afterstate is None:
+            return
+
+        # Update Q-value based on TD error
+        td_error = td_target - q_table.get_q_value(current_afterstate)
+        new_q_value = q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
+        q_table.set_q_value(current_afterstate, new_q_value)
 
 
 if __name__ == '__main__':

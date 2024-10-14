@@ -38,16 +38,16 @@ class QTable:
         return q_values
 
 
-    def get_best_action(self, env: Any, state: Any) -> Optional[Any]:
-        """Return the action with the highest Q-value for the given state."""
-        allowed_actions = env.get_allowed_actions(state)
-        if not allowed_actions:
-            return None
-        q_values =self.get_q_values(state,env=env,allowed_actions =allowed_actions)
-        # Handle the case where all afterstates are None or have Q-value of 0.0
-        if not any(q_values.values()):
-            return random.choice(allowed_actions)  # Fallback to random action
-        return max(q_values, key=q_values.get) if q_values else None
+    # def get_best_action(self, env: Any, state: Any) -> Optional[Any]:
+    #     """Return the action with the highest Q-value for the given state."""
+    #     allowed_actions = env.get_allowed_actions(state)
+    #     if not allowed_actions:
+    #         return None
+    #     q_values =self.get_q_values(state,env=env,allowed_actions =allowed_actions)
+    #     # Handle the case where all afterstates are None or have Q-value of 0.0
+    #     if not any(q_values.values()):
+    #         return random.choice(allowed_actions)  # Fallback to random action
+    #     return max(q_values, key=q_values.get) if q_values else None
 
     @staticmethod
     def afterstate(env: Any, state: Any, action: Any) -> Any:
