@@ -1,5 +1,6 @@
 import random
 import time
+from collections import Counter
 from typing import Dict, Any, Optional
 
 import numpy as np
@@ -27,13 +28,19 @@ class DoubleQLearningAgent(GenericAgent):
         # To keep track of which Q-table to update
         self.update_table = 1  # Start with Q1
 
-
-    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
+    def _best_action(self, state: Any, allowed_actions=None) -> Any:
         """Select the best action based on the sum of Q1 and Q2."""
         q_values = {}
+        if self.env.is_terminal(state):
+            return None
+        if allowed_actions is None:
+            allowed_actions = self.env.get_allowed_actions(state)
+
+
         for action in allowed_actions:
-            q1 = self.q_table1.get_q_value(self.q_table1.afterstate(self.env, state, action))
-            q2 = self.q_table2.get_q_value(self.q_table2.afterstate(self.env, state, action))
+            afterstate = self.q_table1.afterstate(self.env, state, action)
+            q1 = self.q_table1.get_q_value(afterstate)
+            q2 = self.q_table2.get_q_value(afterstate)
             q_values[action] = q1 + q2  # Combine Q-values
         max_value = max(q_values.values())
         # In case multiple actions have the same max value, randomly choose among them
@@ -64,6 +71,7 @@ class DoubleQLearningAgent(GenericAgent):
         # # Choose a random action for next_state from allowed actions
         allowed_actions = self.env.get_allowed_actions(next_state)
         next_action = random.choice(allowed_actions) if allowed_actions else None
+
         if self.update_table == 1:
             q_table_primary = self.q_table1
             q_table_secondary = self.q_table2
