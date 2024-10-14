@@ -4,12 +4,18 @@ from typing import Dict, Any, Optional
 
 import numpy as np
 
-from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent
+from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent, REFRESH_RATE
 from fantasyPL.generic_code.envs import SelectorGameMini
 from fantasyPL.generic_code.plotting import plot_line_dict
 from fantasyPL.generic_code.q_learning import QLearningAgent
 from fantasyPL.generic_code.q_table import QTable
 from helper_methods import print_list_of_dicts
+
+
+import numpy as np
+import random
+from typing import Any, Dict, Optional, Tuple, List
+from fantasyPL.generic_code.q_table import QTable
 
 
 class DoubleQLearningAgent(GenericAgent):
@@ -21,32 +27,10 @@ class DoubleQLearningAgent(GenericAgent):
         # To keep track of which Q-table to update
         self.update_table = 1  # Start with Q1
 
-    def get_q_values(self, state: Any) -> Dict[Any, float]:
-        """
-        Retrieve combined Q-values for all allowed actions in the current state
-        by summing Q-values from both Q-tables.
-        """
-        allowed_actions = self.env.get_allowed_actions(state)
-        q_values = {}
-        for action in allowed_actions:
-            afterstate1 = self.q_table1.afterstate(self.env, state, action)
-            afterstate2 = self.q_table2.afterstate(self.env, state, action)
-            q1 = self.q_table1.get_q_value(afterstate1)
-            q2 = self.q_table2.get_q_value(afterstate2)
-            q_values[action] = q1 + q2  # Combine Q-values (sum)
-        return q_values
-
-    def _epsilon_greedy_action(self, state: Any) -> Any:
-        """Apply epsilon-greedy strategy to select an action based on combined Q-values."""
-        if np.random.rand() <= self.epsilon_decay.get_epsilon():
-            return random.choice(self.env.get_allowed_actions(state))
-        return self._best_action(state)
-
-    def _best_action(self, state: Any) -> Any:
+    def calculate_td_target(self):
+        pass
+    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
         """Select the best action based on the sum of Q1 and Q2."""
-        allowed_actions = self.env.get_allowed_actions(state)
-        if not allowed_actions:
-            return None
         q_values = {}
         for action in allowed_actions:
             q1 = self.q_table1.get_q_value(self.q_table1.afterstate(self.env, state, action))
@@ -128,42 +112,6 @@ class DoubleQLearningAgent(GenericAgent):
         new_q_value = q_table_primary.get_q_value(current_afterstate) + self.learning_rate * td_error
         q_table_primary.set_q_value(current_afterstate, new_q_value)
 
-    def get_policy(self) -> Dict[Any, Any]:
-        """Get the current policy by combining Q1 and Q2."""
-        policy = {}
-        for state in self.q_table1.q_table:
-            allowed_actions = self.env.get_allowed_actions(state)
-            best_action = self._best_action(state)
-            if best_action is not None:
-                policy[state] = best_action
-        return policy
-
-    def plot_rewards(
-        self,
-        reward: float,
-        episode: int,
-        patience: int,
-        show: bool,
-        policy_score: float
-    ):
-        """Plot the list of rewards per episode with a moving average line, policy score, and early stopping info."""
-        start_time = time.time()
-        # Always add data
-        self.plotter.add_data(
-            reward=reward,
-            epsilon=self.epsilon_decay.epsilon,
-            policy_score=policy_score
-        )
-
-        # Refresh plot only if show is True
-        if show:
-            self.plotter.refresh_plot(
-                episode=episode,
-                early_stopping=self.early_stopping,
-                patience=patience
-            )
-
-        self.time_tracker.add_time('plotting', time.time() - start_time)
 
 if __name__ == '__main__':
     scores = {

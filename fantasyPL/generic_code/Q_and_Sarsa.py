@@ -81,16 +81,23 @@ class GenericAgent(abc.ABC):
         if np.random.rand() <= self.epsilon_decay.get_epsilon():
             action = random.choice(allowed_actions)
         else:
-            q_values = self.get_q_values(state)
-            max_q = max(q_values.values())
-            # Handle multiple actions with the same max Q-value
-            best_actions = [action for action, q in q_values.items() if q == max_q]
-            action = random.choice(best_actions) if best_actions else random.choice(allowed_actions)
+            action = self._best_action(state, allowed_actions)
 
         end_time = time.time()
         self.time_tracker.add_time('action_selection', end_time - start_time)
         return action
 
+
+    def _best_action(self, state: Any, allowed_actions: List[Any]) -> Any:
+        """
+        Determine the best action based on the Q-values for the given state.
+        If there are multiple actions with the same max Q-value, one is chosen randomly.
+        """
+        q_values = self.get_q_values(state)
+        max_q = max(q_values.values())
+        # Handle multiple actions with the same max Q-value
+        best_actions = [action for action, q in q_values.items() if q == max_q]
+        return random.choice(best_actions) if best_actions else random.choice(allowed_actions)
     def plot_rewards(
         self,
         reward: float,
