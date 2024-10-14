@@ -178,7 +178,7 @@ class GenericAgent(abc.ABC):
         start_time = time.time()
 
         # Initialize Q-values and validate actions
-        current_afterstate = self._initialize(state, action, next_state)
+        current_afterstate = self._initialize(state=state, action=action, next_state=next_state)
 
         if current_afterstate is None:
             self.time_tracker.add_time('learning', time.time() - start_time)
@@ -205,11 +205,13 @@ class GenericAgent(abc.ABC):
 
         return self.q_table.afterstate(self.env, state, action)
 
-    def _update(self, current_afterstate: Any, td_target: float):
+    def _update(self, current_afterstate: Any, td_target: float, q_table=None):
         """Update the Q-value based on the TD target."""
-        td_error = td_target - self.q_table.get_q_value(current_afterstate)
-        new_q_value = self.q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
-        self.q_table.set_q_value(current_afterstate, new_q_value)
+        if q_table is None:
+            q_table = self.q_table
+        td_error = td_target - q_table.get_q_value(current_afterstate)
+        new_q_value = q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
+        q_table.set_q_value(current_afterstate, new_q_value)
     def run_policy(self, policy: Dict[Any, Any]) -> Tuple[List[Dict[str, Any]], float]:
         """Run a policy and return the strategy and total reward."""
         state = self.env.reset()
