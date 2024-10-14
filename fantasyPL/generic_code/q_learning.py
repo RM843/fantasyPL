@@ -17,11 +17,11 @@ class QLearningAgent(GenericAgent):
 
     def calculate_td_target(self, state, action, reward, next_state, done, next_action=None) -> float:
         """Q-learning specific TD target calculation."""
-        # Get the best action for the next state using the Q-learning approach
-        best_next_action = self._best_action( next_state)
-        if best_next_action is None:
+
+        if  self.env.is_terminal(state):
             next_afterstate = None
         else:
+            best_next_action = self._best_action(next_state)
             next_afterstate = self.q_table.afterstate(self.env, next_state, best_next_action)
 
         # Q-learning formula for TD target

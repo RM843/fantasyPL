@@ -93,7 +93,8 @@ class GenericAgent(abc.ABC):
         Determine the best action based on the Q-values for the given state.
         If there are multiple actions with the same max Q-value, one is chosen randomly.
         """
-
+        if self.env.is_terminal(state):
+            return None
         q_values = self.get_q_values(state)
         max_q = max(q_values.values())
         # Handle multiple actions with the same max Q-value
