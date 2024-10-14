@@ -15,10 +15,22 @@ class QLearningAgent(GenericAgent):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
 
+    def calculate_td_target(self, state, action, reward, next_state, done, next_action=None) -> float:
+        """Q-learning specific TD target calculation."""
+        # Get the best action for the next state using the Q-learning approach
+        best_next_action = self.q_table.get_best_action(self.env, next_state)
+        if best_next_action is None:
+            next_afterstate = None
+        else:
+            next_afterstate = self.q_table.afterstate(self.env, next_state, best_next_action)
+
+        # Q-learning formula for TD target
+        return reward + self.discount_factor * self.q_table.get_q_value(next_afterstate) * (1 - done)
+
     def learn(self, state, action, reward, next_state, done):
         """Update Q-values using the Q-learning formula."""
         super().learn(state, action, reward,
-                     next_state, done, next_action=None, sarsa=False)
+                     next_state, done, next_action=None)
 
     def train(self,  max_steps=100, patience=10, min_delta=1.0):
         """Train the SARSA agent for a specified number of episodes."""

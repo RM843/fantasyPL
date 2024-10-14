@@ -9,10 +9,15 @@ class SARSAAgent(GenericAgent):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
 
-    def learn(self, state, action, reward, next_state, next_action, done):
+    def calculate_td_target(self, state, action, reward, next_state, done, next_action=None) -> float:
+        """SARSA-specific TD target calculation."""
+        # Use the next action chosen using the SARSA policy for TD calculation
+        next_afterstate = self.q_table.afterstate(self.env, next_state, next_action)
+        return reward + self.discount_factor * self.q_table.get_q_value(next_afterstate) * (1 - done)
+    def learn(self, state, action, reward, next_state, next_action,sarsa, done):
         """Update Q-values using the SARSA formula."""
         super().learn( state, action, reward,
-                       next_state, done, next_action=next_action, sarsa=True)
+                       next_state, done, next_action=next_action)
 
     def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0):
         """Train the SARSA agent for a specified number of episodes."""
