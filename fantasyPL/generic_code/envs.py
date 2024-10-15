@@ -3,6 +3,149 @@ import numpy as np
 from helper_methods import combination_generator
 
 
+class MaximizationBiasEnv:
+    def __init__(self):
+        """
+        Initialize the Maximization Bias Environment.
+        """
+        # Define states
+        self.states = ['A', 'B', 'Terminal']
+        self.start_state = 'A'
+        self.terminal_state = 'Terminal'
+
+        # Define actions
+        self.actions = {
+            'A': {
+                0: 'Left',  # Action 0: Left
+                1: 'Right'  # Action 1: Right
+            },
+            'B': {
+                0: 'Any'  # Action 0 (and others): Any action leads to Terminal with stochastic reward
+                # Additional actions can be added if desired
+            },
+            'Terminal': {}
+        }
+
+        # Define reward distribution from state B
+        self.b_reward_mean = 0.1
+        self.b_reward_variance = 1.0
+
+        # Initialize current state
+        self.reset()
+
+    def reset(self):
+        """
+        Reset the environment to the start state.
+
+        Returns:
+            state (str): The starting state ('A').
+        """
+        self.current_state = self.start_state
+        return self.current_state
+
+    def step(self, action):
+        """
+        Take an action in the environment.
+
+        Parameters:
+            action (int): The action to take.
+                - From state 'A':
+                    - 0: Left
+                    - 1: Right
+                - From state 'B':
+                    - 0: Any action (since all actions lead to termination)
+
+        Returns:
+            next_state (str): The state after taking the action.
+            reward (float): The reward received after taking the action.
+            done (bool): Whether the episode has ended.
+        """
+        if self.is_terminal(self.current_state):
+            raise Exception("Cannot take action from terminal state. Please reset the environment.")
+
+        if self.current_state == 'A':
+            if action == 0:  # Left
+                next_state = 'B'
+                reward = 0.0
+            elif action == 1:  # Right
+                next_state = self.terminal_state
+                reward = 0.0
+            else:
+                raise ValueError(f"Invalid action {action} from state 'A'.")
+        elif self.current_state == 'B':
+            # Any action from B leads to termination with stochastic reward
+            next_state = self.terminal_state
+            reward = np.random.normal(self.b_reward_mean, np.sqrt(self.b_reward_variance))
+        else:
+            raise ValueError(f"Unknown current state: {self.current_state}")
+
+        done = self.is_terminal(next_state)
+        self.current_state = next_state
+        return next_state, reward, done
+
+    def get_allowed_actions(self, state=None):
+        """
+        Get the list of allowed actions from the given state.
+
+        Parameters:
+            state (str, optional): The state from which to get actions. If None, use current state.
+
+        Returns:
+            allowed_actions (list of int): List of allowed action indices.
+        """
+        if state is None:
+            state = self.current_state
+
+        if state not in self.actions:
+            raise ValueError(f"Unknown state: {state}")
+
+        return list(self.actions[state].keys())
+
+    def is_terminal(self, state):
+        """
+        Check if the given state is terminal.
+
+        Parameters:
+            state (str): The state to check.
+
+        Returns:
+            is_term (bool): True if terminal, False otherwise.
+        """
+        return state == self.terminal_state
+
+    def render(self):
+        """
+        Render the current state of the environment.
+        """
+        print(f"Current State: {self.current_state}")
+
+    def transition_model(self, state, action):
+        """
+        Predict the next state given a state and action without changing the current state.
+
+        Parameters:
+            state (str): The current state.
+            action (int): The action to take.
+
+        Returns:
+            next_state (str): The state resulting from taking the action.
+            reward (float): The expected reward.
+            done (bool): Whether the next state is terminal.
+        """
+        if state == 'A':
+            if action == 0:  # Left
+                return 'B', 0.0, False
+            elif action == 1:  # Right
+                return self.terminal_state, 0.0, True
+            else:
+                raise ValueError(f"Invalid action {action} from state 'A'.")
+        elif state == 'B':
+            # Any action leads to terminal with stochastic reward
+            return self.terminal_state, self.b_reward_mean, True  # Expected reward is mean
+        else:
+            return state, 0.0, True  # Terminal state remains terminal
+
+
 class CliffWalkingEnv:
     def __init__(self, width=12, height=4, start=(3, 0), goal=(3, 11)):
         self.width = width
@@ -128,6 +271,13 @@ class CliffWalkingEnv:
 
         print('\n'.join([''.join(row) for row in grid]))
         print()
+    def transition_model(self,state,action):
+        orig_pos =  self.agent_position
+        self.agent_position = state
+
+        next_state, _, _ = self.step(action)
+        self.agent_position = orig_pos
+        return next_state
 
 class SelectorGameMini:
 

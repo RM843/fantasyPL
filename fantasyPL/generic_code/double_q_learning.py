@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 import numpy as np
 
 from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent, REFRESH_RATE
-from fantasyPL.generic_code.envs import SelectorGameMini
+from fantasyPL.generic_code.envs import SelectorGameMini, CliffWalkingEnv
 from fantasyPL.generic_code.plotting import plot_line_dict
 from fantasyPL.generic_code.q_learning import QLearningAgent
 from fantasyPL.generic_code.q_table import QTable
@@ -135,13 +135,14 @@ if __name__ == '__main__':
 
 
     # Example usage with the CliffWalkingEnv:
-    # env = CliffWalkingEnv()
-    agent = DoubleQLearningAgent(env, epsilon_min=0.01, episodes=20000)
-    agent.train(
-        patience=10000, min_delta=1)
+    env = CliffWalkingEnv()
     agent1 = QLearningAgent(env, epsilon_min=0.01, episodes=20000)
     agent1.train(
         patience=10000, min_delta=1)
+    agent = DoubleQLearningAgent(env, epsilon_min=0.01, episodes=20000)
+    agent.train(
+        patience=10000, min_delta=1)
+
 
 
     lines_dict = {

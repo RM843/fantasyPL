@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import random
 
@@ -27,6 +29,12 @@ class QLearningAgent(GenericAgent):
         # Q-learning formula for TD target
         return reward + self.discount_factor * self.q_table.get_q_value(next_afterstate) * (1 - done)
 
+    def td_target_strategy(
+            self, state: Any, action: Any, reward: float, next_state: Any, next_action: Any, done: bool
+    ):
+        """TD update logic for Q-learning."""
+        td_target = reward + self.discount_factor * max(self.get_q_values(next_state).values()) if not done else reward
+        self.learn(state, action, reward, next_state, done)
     def learn(self, state, action, reward, next_state, done):
         """Update Q-values using the Q-learning formula."""
         super().learn(state, action, reward,

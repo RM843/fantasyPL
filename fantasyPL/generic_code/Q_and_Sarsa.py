@@ -265,7 +265,7 @@ class GenericAgent(abc.ABC):
                 else:
                     action = self.choose_action_based_on_policy(state)
                     next_state, reward, done = self.env.step(action)
-                    self.learn(state, action, reward, next_state, done)
+                    self.learn(state = state, action=action, reward=reward, next_state=next_state, done=done)
                     state = next_state
 
                 total_reward += reward
