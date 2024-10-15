@@ -4,6 +4,8 @@ import numpy as np
 import random
 import abc
 
+from tqdm import tqdm
+
 from fantasyPL.generic_code.epsilion_decay import EpsilonDecay
 from fantasyPL.generic_code.plotting import TrainingPlotter
 from fantasyPL.generic_code.q_table import QTable
@@ -34,7 +36,6 @@ class GenericAgent(abc.ABC):
         self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy="inverse_sigmoid")
 
         self.moving_average_period = moving_average_period  # Period for moving average
-        self.early_stopping = 0  # Tracks consecutive episodes without significant improvement
 
         # Initialize Q-table
         self.q_table = QTable()
@@ -109,11 +110,11 @@ class GenericAgent(abc.ABC):
         self,
         reward: float,
         episode: int,
-        patience: int,
+
         show: bool,
         policy_score: float
     ):
-        """Plot the list of rewards per episode with a moving average line, policy score, and early stopping info."""
+        """Plot the list of rewards per episode with a moving average line, policy score,"""
         start_time = time.time()
         # Always add data
         self.plotter.add_data(
@@ -126,27 +127,10 @@ class GenericAgent(abc.ABC):
         if show:
             self.plotter.refresh_plot(
                 episode=episode,
-                early_stopping=self.early_stopping,
-                patience=patience
             )
 
         self.time_tracker.add_time('plotting', time.time() - start_time)
 
-    def check_early_stopping(self, patience: int = 10, min_delta: float = 1.0) -> bool:
-        """Check if training should stop early based on moving average."""
-        if len(self.plotter.moving_avg_y) < 2:
-            return False  # Not enough data to decide
-
-        recent_avg = self.plotter.moving_avg_y[-1]
-        past_avg = self.plotter.moving_avg_y[-2]
-        # Check if the improvement is less than min_delta
-        if recent_avg - past_avg < min_delta:
-            self.early_stopping += 1
-        else:
-            self.early_stopping = 0
-        if self.early_stopping >= patience:
-            return True
-        return False
 
     def get_policy(self) -> Dict[Any, Any]:
         """Get the current policy from the Q-table."""
@@ -178,9 +162,9 @@ class GenericAgent(abc.ABC):
         start_time = time.time()
 
         # Initialize Q-values and validate actions
-        current_afterstate = self._initialize(state=state, action=action, next_state=next_state)
+        state_rep_to_use = self._initialize(state=state, action=action, next_state=next_state)
 
-        if current_afterstate is None:
+        if state_rep_to_use is None:
             self.time_tracker.add_time('learning', time.time() - start_time)
             return
 
@@ -188,7 +172,7 @@ class GenericAgent(abc.ABC):
         td_target = self.calculate_td_target(state, action, reward, next_state, done, next_action)
 
         # Update Q-value based on TD error
-        self._update(current_afterstate, td_target)
+        self._update(state_rep_to_use, td_target)
 
         # Decay epsilon
         if done:
@@ -198,20 +182,22 @@ class GenericAgent(abc.ABC):
         self.time_tracker.add_time('learning', time.time() - start_time)
 
     def _initialize(self, state: Any, action: Any, next_state: Any) -> Optional[Any]:
-        """Initialize Q-values and validate actions."""
+        """Initialize Q-values if not existing and validate actions."""
         self.q_table.initialize_q_value(state)
         self.q_table.initialize_q_value(next_state)
         self.validate_action(state, action)
+        if self.env.use_afterstates:
+            return self.q_table.afterstate(self.env, state, action)
+        else:
+            return state
 
-        return self.q_table.afterstate(self.env, state, action)
-
-    def _update(self, current_afterstate: Any, td_target: float, q_table=None):
+    def _update(self, state_rep_to_use: Any, td_target: float, q_table=None):
         """Update the Q-value based on the TD target."""
         if q_table is None:
             q_table = self.q_table
-        td_error = td_target - q_table.get_q_value(current_afterstate)
-        new_q_value = q_table.get_q_value(current_afterstate) + self.learning_rate * td_error
-        q_table.set_q_value(current_afterstate, new_q_value)
+        td_error = td_target - q_table.get_q_value(state_rep_to_use)
+        new_q_value = q_table.get_q_value(state_rep_to_use) + self.learning_rate * td_error
+        q_table.set_q_value(state_rep_to_use, new_q_value)
     def run_policy(self, policy: Dict[Any, Any]) -> Tuple[List[Dict[str, Any]], float]:
         """Run a policy and return the strategy and total reward."""
         state = self.env.reset()
@@ -238,40 +224,19 @@ class GenericAgent(abc.ABC):
 
         return strategy, total_reward
 
+    @abc.abstractmethod
+    def learn_episode(self,max_steps):
+        pass
     def train(
         self,
         max_steps: int = 100,
-        patience: int = 10,
-        min_delta: float = 1.0,
         sarsa: bool = False
     ): 
         """Train the agent for a specified number of episodes."""
         start_time = time.time()
         show = True
-        for episode in range(self.episodes):
-            state = self.env.reset()
-            action = self.choose_action_based_on_policy(state) if sarsa else None  # Only for SARSA
-            total_reward = 0.0
-
-            for step in range(max_steps):
-                if sarsa:
-                    next_state, reward, done = self.env.step(action)
-                    if not done:
-                        next_action = self.choose_action_based_on_policy(next_state)
-                    else:
-                        next_action = None  # Assuming env has no actions after terminal state
-                    self.learn(state=state, action=action, reward=reward, next_state=next_state, done=done, next_action=next_action)
-                    state, action = next_state, next_action
-                else:
-                    action = self.choose_action_based_on_policy(state)
-                    next_state, reward, done = self.env.step(action)
-                    self.learn(state = state, action=action, reward=reward, next_state=next_state, done=done)
-                    state = next_state
-
-                total_reward += reward
-
-                if done:
-                    break
+        for episode in tqdm(range(self.episodes)):
+            total_reward = self.learn_episode(max_steps=max_steps)
 
             # Determine if it's time to show the plot
             if time.time() - start_time > REFRESH_RATE:
@@ -286,7 +251,6 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
-                    patience=patience,
                     show=True,
                     policy_score=policy_score
                 )
@@ -297,17 +261,10 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
-                    patience=patience,
                     show=False,
                     policy_score=last_policy_score
                 )
 
-            # Check for early stopping and print progress
-            early_stop = self.check_early_stopping(patience, min_delta)
-
-            if early_stop:
-                print(f"Early stopping triggered at episode {episode + 1}.")
-                break
 
         # Print time breakdown after training is complete
         self.print_time_breakdown()
@@ -317,7 +274,6 @@ class GenericAgent(abc.ABC):
         self.plot_rewards(
             reward=total_reward,
             episode=episode,
-            patience=patience,
             show=True,
             policy_score=policy_score
         )

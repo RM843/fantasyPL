@@ -156,6 +156,7 @@ class CliffWalkingEnv:
         self.state_size = self.width * self.height  # Number of discrete states
         self.action_size = 4  # Four actions: Up, Right, Down, Left
         self.reset()
+        self.use_afterstates=False
 
     def reset(self):
         """Reset the environment to the start state."""
@@ -289,7 +290,7 @@ class SelectorGameMini:
         self.selections_superset = None
         self._initial_state = "INITIAL"
         self._do_nothing_action = (-1, None)
-
+        self.use_afterstates = True
         self.reset()
 
     @property

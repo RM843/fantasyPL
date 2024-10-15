@@ -136,12 +136,10 @@ if __name__ == '__main__':
 
     # Example usage with the CliffWalkingEnv:
     env = CliffWalkingEnv()
-    agent1 = QLearningAgent(env, epsilon_min=0.01, episodes=20000)
-    agent1.train(
-        patience=10000, min_delta=1)
+    agent1 = QLearningAgent(env, epsilon_min=0.01, episodes=200000)
+    agent1.train()
     agent = DoubleQLearningAgent(env, epsilon_min=0.01, episodes=20000)
-    agent.train(
-        patience=10000, min_delta=1)
+    agent.train()
 
 
 

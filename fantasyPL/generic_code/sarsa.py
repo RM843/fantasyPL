@@ -14,14 +14,36 @@ class SARSAAgent(GenericAgent):
         # Use the next action chosen using the SARSA policy for TD calculation
         next_afterstate = self.q_table.afterstate(self.env, next_state, next_action)
         return reward + self.discount_factor * self.q_table.get_q_value(next_afterstate) * (1 - done)
-    def learn(self, state, action, reward, next_state, next_action,sarsa, done):
+
+    def learn_episode(self,max_steps):
+        state = self.env.reset()
+        action = self.choose_action_based_on_policy(state)
+        total_reward = 0.0
+
+        for step in range(max_steps):
+
+            next_state, reward, done = self.env.step(action)
+            if not done:
+                next_action = self.choose_action_based_on_policy(next_state)
+            else:
+                next_action = None  # Assuming env has no actions after terminal state
+            self.learn(state=state, action=action, reward=reward, next_state=next_state, done=done,
+                       next_action=next_action)
+            state, action = next_state, next_action
+
+            total_reward += reward
+
+            if done:
+                break
+        return total_reward
+    def learn(self, state, action, reward, next_state, next_action, done):
         """Update Q-values using the SARSA formula."""
         super().learn( state, action, reward,
                        next_state, done, next_action=next_action)
 
-    def train(self, episodes=1000, max_steps=100, patience=10, min_delta=1.0):
+    def train(self, episodes=1000, max_steps=100):
         """Train the SARSA agent for a specified number of episodes."""
-        super().train( max_steps, patience, min_delta, sarsa=True)
+        super().train( max_steps)
 
 
 if __name__ == '__main__':
@@ -47,9 +69,9 @@ if __name__ == '__main__':
 
 
     # Example usage with the CliffWalkingEnv:
-    # env = CliffWalkingEnv()
+    env = CliffWalkingEnv()
     agent = SARSAAgent(env, epsilon_min=0.01,episodes=400000)
-    agent.train( patience=10000, min_delta=1)
+    agent.train()
     # agent.print_policy()
     q_strat, value = agent.run_policy(policy=agent.get_policy())
     print_list_of_dicts(q_strat)

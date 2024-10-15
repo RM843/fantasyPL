@@ -72,8 +72,6 @@ class TrainingPlotter:
     def refresh_plot(
         self,
         episode: int,
-        early_stopping: int,
-        patience: int
     ):
         """Refresh the plot with the current data."""
         # Update plot data
@@ -99,7 +97,7 @@ class TrainingPlotter:
 
         # Update title with early stopping info
         self.ax1.set_title(
-            f'Training Performance\nEpisode: {episode + 1}, Early Stopping: {early_stopping}/{patience}'
+            f'Training Performance\nEpisode: {episode + 1}'
         )
 
         # Update legends

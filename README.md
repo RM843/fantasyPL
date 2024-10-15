@@ -1,4 +1,6 @@
 todo
+- fix cliff walk
 - refactor
 - make afterstates a toggle
-- make double Q work on Maxiumiseation bias env
+- less laggy plots
+- make double Q work on Maximisation bias env
