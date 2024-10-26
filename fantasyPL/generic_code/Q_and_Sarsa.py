@@ -7,7 +7,7 @@ import abc
 from tqdm import tqdm
 
 from fantasyPL.generic_code.epsilion_decay import EpsilonDecay
-from fantasyPL.generic_code.plotting import TrainingPlotter
+from fantasyPL.generic_code.plotting import TrainingPlotter, TrainingPlotter2
 from fantasyPL.generic_code.q_table import QTable
 from fantasyPL.generic_code.timing import TimeTracker
 
@@ -41,7 +41,7 @@ class GenericAgent(abc.ABC):
         self.q_table = QTable()
 
         # Initialize Plotter
-        self.plotter = TrainingPlotter(self.moving_average_period)
+        self.plotter = TrainingPlotter2(self.moving_average_period)
 
         # Initialize TimeTracker
         self.time_tracker = TimeTracker()
@@ -214,6 +214,9 @@ class GenericAgent(abc.ABC):
             next_state, reward, done = self.env.step(action)
             end_time = time.time()
             self.time_tracker.add_time('environment_step', end_time - start_time)
+
+            if next_state in [x["state"] for x in strategy]:
+                return None,None
 
             strategy.append({"state": state, "action": action, "value": reward})
             total_reward += reward

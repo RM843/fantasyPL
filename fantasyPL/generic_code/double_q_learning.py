@@ -1,9 +1,6 @@
 import random
-import time
-from collections import Counter
 from typing import Dict, Any, Optional
 
-import numpy as np
 
 from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent, REFRESH_RATE
 from fantasyPL.generic_code.envs import SelectorGameMini, CliffWalkingEnv
@@ -137,7 +134,7 @@ if __name__ == '__main__':
     # Example usage with the CliffWalkingEnv:
     env = CliffWalkingEnv()
     agent1 = QLearningAgent(env, epsilon_min=0.01, episodes=200000)
-    agent1.train()
+    agent1.train(max_steps=10000)
     agent = DoubleQLearningAgent(env, epsilon_min=0.01, episodes=20000)
     agent.train()
 

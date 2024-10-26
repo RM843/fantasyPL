@@ -5,6 +5,14 @@ from itertools import combinations
 import time
 from functools import wraps
 
+def replace_nones_with_previous(lst):
+    last_value = None
+    for i, val in enumerate(lst):
+        if val is None:
+            lst[i] = last_value
+        else:
+            last_value = val
+    return lst
 def print_list_of_dicts(list_of_dicts):
     """Print a list of dictionaries in a nicely formatted way."""
     pp = pprint.PrettyPrinter(indent=4)

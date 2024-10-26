@@ -153,24 +153,25 @@ class CliffWalkingEnv:
         self.start = start
         self.goal = goal
         self.cliff = [(3, i) for i in range(1, self.width - 1)]
-        self.state_size = self.width * self.height  # Number of discrete states
-        self.action_size = 4  # Four actions: Up, Right, Down, Left
+        self.state_size = self.width * self.height
+        self.action_size = ["Up", "Right", "Down", "Left"]
         self.reset()
-        self.use_afterstates=False
+        self.use_afterstates = True
 
     def reset(self):
         """Reset the environment to the start state."""
         self.agent_position = self.start
+        self.game_moves = 0
         return self.agent_position
 
     def step(self, action):
-        """Take an action in the environment.
+        """Take an action in the environment using action words.
 
         Actions:
-        - 0: Up
-        - 1: Right
-        - 2: Down
-        - 3: Left
+        - "Up"
+        - "Right"
+        - "Down"
+        - "Left"
 
         Returns:
         - next_state: The new agent position
@@ -180,17 +181,18 @@ class CliffWalkingEnv:
         x, y = self.agent_position
 
         # Define actions
-        if action == 0:  # Up
+        if action == "Up":
             x = max(x - 1, 0)
-        elif action == 1:  # Right
+        elif action == "Right":
             y = min(y + 1, self.width - 1)
-        elif action == 2:  # Down
+        elif action == "Down":
             x = min(x + 1, self.height - 1)
-        elif action == 3:  # Left
+        elif action == "Left":
             y = max(y - 1, 0)
 
         # Update position
         self.agent_position = (x, y)
+        self.game_moves += 1
 
         # Determine reward and terminal state
         if self.agent_position in self.cliff:
@@ -212,13 +214,13 @@ class CliffWalkingEnv:
         """Return a list of allowed actions for a given state.
 
         Actions:
-        - 0: Up
-        - 1: Right
-        - 2: Down
-        - 3: Left
+        - "Up"
+        - "Right"
+        - "Down"
+        - "Left"
 
         Parameters:
-        - state: The current state index.
+        - state: The current (x, y) state.
 
         Returns:
         - allowed_actions: A list of actions that can be taken from the given state.
@@ -228,13 +230,13 @@ class CliffWalkingEnv:
 
         # Check if the movement is within bounds
         if x > 0:  # Can move up
-            allowed_actions.append(0)
+            allowed_actions.append("Up")
         if y < self.width - 1:  # Can move right
-            allowed_actions.append(1)
+            allowed_actions.append("Right")
         if x < self.height - 1:  # Can move down
-            allowed_actions.append(2)
+            allowed_actions.append("Down")
         if y > 0:  # Can move left
-            allowed_actions.append(3)
+            allowed_actions.append("Left")
 
         return allowed_actions
 
@@ -242,7 +244,7 @@ class CliffWalkingEnv:
         """Check if the given state is terminal.
 
         Parameters:
-        - state: The current state index.
+        - state: The current (x, y) state.
 
         Returns:
         - True if the state is terminal (goal or cliff), otherwise False.
@@ -272,10 +274,11 @@ class CliffWalkingEnv:
 
         print('\n'.join([''.join(row) for row in grid]))
         print()
-    def transition_model(self,state,action):
-        orig_pos =  self.agent_position
-        self.agent_position = state
 
+    def transition_model(self, state, action):
+        """Return the resulting state from a given state and action."""
+        orig_pos = self.agent_position
+        self.agent_position = state
         next_state, _, _ = self.step(action)
         self.agent_position = orig_pos
         return next_state
