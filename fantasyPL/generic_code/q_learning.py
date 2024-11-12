@@ -17,6 +17,7 @@ class QLearningAgent(GenericAgent):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
 
+
     def calculate_td_target(self, state, action, reward, next_state, done, next_action=None) -> float:
         """Q-learning specific TD target calculation."""
 
@@ -24,10 +25,7 @@ class QLearningAgent(GenericAgent):
             state_rep_to_use = None
         else:
             best_next_action = self._best_action(next_state)
-            if self.env.use_afterstates:
-                state_rep_to_use = self.q_table.afterstate(self.env, next_state, best_next_action)
-            else:
-                state_rep_to_use = state
+            state_rep_to_use = self._get_state(state=next_state,action=best_next_action)
 
         # Q-learning formula for TD target
         return reward + self.discount_factor * self.q_table.get_q_value(state_rep_to_use) * (1 - done)
@@ -35,9 +33,11 @@ class QLearningAgent(GenericAgent):
     def learn_episode(self, max_steps):
         state = self.env.reset() # Initialize S
         total_reward = 0.0
+        actions_count = {}
         for step in range(max_steps):
             # self.env.render()
             action = self.choose_action_based_on_policy(state) # Choose A from S using policy derived from Q (e.g., eps-greedy)
+            actions_count[action] = actions_count.get(action,0)+1
             # print(action)
             next_state, reward, done = self.env.step(action) # Take action A, observe R, S
             self.learn(state=state, action=action, reward=reward, next_state=next_state, done=done)
@@ -47,7 +47,7 @@ class QLearningAgent(GenericAgent):
 
             if done:
                 break
-        return total_reward
+        return total_reward,actions_count
     def learn(self, state, action, reward, next_state, done):
         """Update Q-values using the Q-learning formula."""
         super().learn(state, action, reward,

@@ -21,6 +21,8 @@ class EpsilonDecay:
                 self.inverse_sigmoid_decay(current_episode)
             elif self.strategy == "adaptive" and success_rate is not None:
                 self.adaptive_decay(success_rate)
+            elif self.strategy== "fixed":
+                pass
 
         self.epsilon_history.append(self.epsilon)
 

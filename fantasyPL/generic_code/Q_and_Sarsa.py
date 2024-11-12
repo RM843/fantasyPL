@@ -7,7 +7,7 @@ import abc
 from tqdm import tqdm
 
 from fantasyPL.generic_code.epsilion_decay import EpsilonDecay
-from fantasyPL.generic_code.plotting import TrainingPlotter, TrainingPlotter2
+from fantasyPL.generic_code.plotting import  TrainingPlotter2
 from fantasyPL.generic_code.q_table import QTable
 from fantasyPL.generic_code.timing import TimeTracker
 
@@ -25,7 +25,8 @@ class GenericAgent(abc.ABC):
         epsilon_decay: float = 0.995,
         epsilon_min: float = 0.01,
         moving_average_period: int = 100,
-        episodes: int = 100
+        episodes: int = 100,
+        epsilon_strategy: str ='inverse_sigmoid'
     ):
         self.env = env  # The environment object
         self.learning_rate = learning_rate
@@ -33,7 +34,7 @@ class GenericAgent(abc.ABC):
         self.episodes = episodes
 
         # Initialize EpsilonDecay object
-        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy="inverse_sigmoid")
+        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy=epsilon_strategy)
 
         self.moving_average_period = moving_average_period  # Period for moving average
 
@@ -110,7 +111,7 @@ class GenericAgent(abc.ABC):
         self,
         reward: float,
         episode: int,
-
+        actions: dict,
         show: bool,
         policy_score: float
     ):
@@ -120,6 +121,7 @@ class GenericAgent(abc.ABC):
         self.plotter.add_data(
             reward=reward,
             epsilon=self.epsilon_decay.epsilon,
+            actions=actions,
             policy_score=policy_score
         )
 
@@ -186,8 +188,12 @@ class GenericAgent(abc.ABC):
         self.q_table.initialize_q_value(state)
         self.q_table.initialize_q_value(next_state)
         self.validate_action(state, action)
+        return self._get_state(state,action)
+    def _get_state(self,state,action,q_table=None):
+        if q_table is None:
+            q_table=self.q_table
         if self.env.use_afterstates:
-            return self.q_table.afterstate(self.env, state, action)
+            return q_table.afterstate(self.env, state, action)
         else:
             return state
 
@@ -239,7 +245,7 @@ class GenericAgent(abc.ABC):
         start_time = time.time()
         show = True
         for episode in tqdm(range(self.episodes)):
-            total_reward = self.learn_episode(max_steps=max_steps)
+            total_reward,ep_actions = self.learn_episode(max_steps=max_steps)
 
             # Determine if it's time to show the plot
             if time.time() - start_time > REFRESH_RATE:
@@ -254,6 +260,7 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
+                    actions = ep_actions,
                     show=True,
                     policy_score=policy_score
                 )
@@ -264,6 +271,7 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
+                    actions = ep_actions,
                     show=False,
                     policy_score=last_policy_score
                 )
@@ -278,6 +286,7 @@ class GenericAgent(abc.ABC):
             reward=total_reward,
             episode=episode,
             show=True,
+            actions=ep_actions,
             policy_score=policy_score
         )
         self.plotter.finalize_plot()

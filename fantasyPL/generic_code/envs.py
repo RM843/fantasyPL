@@ -26,6 +26,7 @@ class MaximizationBiasEnv:
             'Terminal': {}
         }
 
+        self.use_afterstates = False
         # Define reward distribution from state B
         self.b_reward_mean = 0.1
         self.b_reward_variance = 1.0
