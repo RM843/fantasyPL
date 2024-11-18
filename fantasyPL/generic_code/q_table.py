@@ -14,9 +14,13 @@ class QTable:
         if state not in self.q_table:
             self.q_table[state] = 0.0
 
-    def get_q_value(self, state: Any) -> float:
+    def get_q_value(self, state: Any, action =None) -> float:
         """Retrieve the Q-value for a given state."""
-        return self.q_table.get(state, 0.0)
+        if action is not None:
+            to_use = (state,action)
+        else:
+            to_use = state
+        return self.q_table.get(to_use, 0.0)
 
     def set_q_value(self, state: Any, value: float):
         """Set the Q-value for a given state."""
@@ -34,9 +38,11 @@ class QTable:
         for action in allowed_actions:
             if env.use_afterstates:
                 state_rep_to_use = self.afterstate(env, state, action)
+                q_value = self.get_q_value(state_rep_to_use)
             else:
-                state_rep_to_use = state
-            q_value = self.get_q_value(state_rep_to_use)
+                state_rep_to_use = state#
+                q_value = self.get_q_value(state_rep_to_use, action)
+
             q_values[action] = q_value
         return q_values
 

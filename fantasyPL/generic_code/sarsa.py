@@ -24,7 +24,7 @@ class SARSAAgent(GenericAgent):
         for step in range(max_steps):
 
             next_state, reward, done = self.env.step(action)
-            actions_count[action] = actions_count.get(action, 0) + 1
+            actions_count[(state,action)] = actions_count.get(action, 0) + 1
             if not done:
                 next_action = self.choose_action_based_on_policy(next_state)
             else:

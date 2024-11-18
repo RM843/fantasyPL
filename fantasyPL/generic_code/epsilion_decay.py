@@ -23,6 +23,8 @@ class EpsilonDecay:
                 self.adaptive_decay(success_rate)
             elif self.strategy== "fixed":
                 pass
+            else:
+                raise NotImplementedError
 
         self.epsilon_history.append(self.epsilon)
 

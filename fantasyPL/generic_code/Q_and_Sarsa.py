@@ -138,9 +138,15 @@ class GenericAgent(abc.ABC):
         """Get the current policy from the Q-table."""
         policy = {}
         for state in self.q_table.q_table:
-            best_action = self._best_action( state)
+
+            if self.env.use_afterstates:
+                state_rep_to_use = state
+
+            else:
+                state_rep_to_use = state[0]
+            best_action = self._best_action(state_rep_to_use)
             if best_action is not None:
-                policy[state] = best_action
+                policy[state_rep_to_use] = best_action
         return policy
 
     def print_policy(self):
@@ -185,17 +191,19 @@ class GenericAgent(abc.ABC):
 
     def _initialize(self, state: Any, action: Any, next_state: Any) -> Optional[Any]:
         """Initialize Q-values if not existing and validate actions."""
-        self.q_table.initialize_q_value(state)
-        self.q_table.initialize_q_value(next_state)
+
+        # self.q_table.initialize_q_value(next_state)
         self.validate_action(state, action)
-        return self._get_state(state,action)
+        state_rep_to_use = self._get_state(state,action)
+        self.q_table.initialize_q_value(state_rep_to_use)
+        return state_rep_to_use
     def _get_state(self,state,action,q_table=None):
         if q_table is None:
             q_table=self.q_table
         if self.env.use_afterstates:
             return q_table.afterstate(self.env, state, action)
         else:
-            return state
+            return (state,action)
 
     def _update(self, state_rep_to_use: Any, td_target: float, q_table=None):
         """Update the Q-value based on the TD target."""

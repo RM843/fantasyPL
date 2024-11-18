@@ -16,11 +16,11 @@ class MaximizationBiasEnv:
         # Define actions
         self.actions = {
             'A': {
-                0: 'Left',  # Action 0: Left
-                1: 'Right'  # Action 1: Right
+                 'left',  # Action 0: Left
+                 'right'  # Action 1: Right
             },
             'B': {
-                0: 'Any'  # Action 0 (and others): Any action leads to Terminal with stochastic reward
+                 'Any'  # Action 0 (and others): Any action leads to Terminal with stochastic reward
                 # Additional actions can be added if desired
             },
             'Terminal': {}
@@ -65,10 +65,10 @@ class MaximizationBiasEnv:
             raise Exception("Cannot take action from terminal state. Please reset the environment.")
 
         if self.current_state == 'A':
-            if action == 0:  # Left
+            if action == 'left':  # Left
                 next_state = 'B'
                 reward = 0.0
-            elif action == 1:  # Right
+            elif action == 'right':  # Right
                 next_state = self.terminal_state
                 reward = 0.0
             else:
@@ -100,7 +100,7 @@ class MaximizationBiasEnv:
         if state not in self.actions:
             raise ValueError(f"Unknown state: {state}")
 
-        return list(self.actions[state].keys())
+        return list(self.actions[state])
 
     def is_terminal(self, state):
         """
@@ -134,9 +134,9 @@ class MaximizationBiasEnv:
             done (bool): Whether the next state is terminal.
         """
         if state == 'A':
-            if action == 0:  # Left
+            if action == 'left':  # Left
                 return 'B', 0.0, False
-            elif action == 1:  # Right
+            elif action == 'right':  # Right
                 return self.terminal_state, 0.0, True
             else:
                 raise ValueError(f"Invalid action {action} from state 'A'.")

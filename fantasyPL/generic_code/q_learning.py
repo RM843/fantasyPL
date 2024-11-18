@@ -37,7 +37,7 @@ class QLearningAgent(GenericAgent):
         for step in range(max_steps):
             # self.env.render()
             action = self.choose_action_based_on_policy(state) # Choose A from S using policy derived from Q (e.g., eps-greedy)
-            actions_count[action] = actions_count.get(action,0)+1
+            # actions_count[(state,action)] = actions_count.get(action,0)+1
             # print(action)
             next_state, reward, done = self.env.step(action) # Take action A, observe R, S
             self.learn(state=state, action=action, reward=reward, next_state=next_state, done=done)

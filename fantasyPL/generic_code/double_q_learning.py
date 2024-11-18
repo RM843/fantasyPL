@@ -28,11 +28,11 @@ class DoubleQLearningAgent(QLearningAgent):
 
     def _initialize(self, state: Any, next_state: Any, action: Any):
         """Initialize Q-values for both tables and validate the action."""
-        self.q_table1.initialize_q_value(state)
-        self.q_table1.initialize_q_value(next_state)
-        self.q_table2.initialize_q_value(state)
-        self.q_table2.initialize_q_value(next_state)
+
         self.validate_action(state, action)
+        state_rep_to_use = self._get_state(state, action)
+        self.q_table1.initialize_q_value(state_rep_to_use)
+        self.q_table2.initialize_q_value(state_rep_to_use)
         return self._get_state(state,action)
     def get_q_values(self, state: Any) -> Dict[Any, float]:
         """
@@ -56,7 +56,7 @@ class DoubleQLearningAgent(QLearningAgent):
 
         # # Choose a random action for next_state from allowed actions
         allowed_actions = self.env.get_allowed_actions(next_state)
-        next_action = random.choice(allowed_actions) if allowed_actions else None
+        next_action = random.choice(allowed_actions) if allowed_actions else None # best_next_action = self._best_action(next_state)
 
         if self.update_table == 1:
             q_table_primary = self.q_table1
@@ -70,8 +70,9 @@ class DoubleQLearningAgent(QLearningAgent):
             return 0.0
 
         if next_action is not None:
-            current_state =  self._get_state(state,action,q_table=q_table_secondary)
-            max_q_secondary = q_table_secondary.get_q_value(current_state)
+
+            state_rep_to_use = self._get_state(state=next_state, action=next_action)
+            max_q_secondary = q_table_secondary.get_q_value(state_rep_to_use)
         else:
             max_q_secondary = 0.0
 
@@ -114,9 +115,10 @@ if __name__ == '__main__':
 
     # Example usage with the CliffWalkingEnv:
     env = MaximizationBiasEnv()
-    agent1 = QLearningAgent(env, epsilon=0.1,epsilon_min=0.01, episodes=200,epsilon_strategy="fixed")
+    env= CliffWalkingEnv()
+    agent1 = QLearningAgent(env, epsilon=1,epsilon_min=0.01, episodes=200000,epsilon_strategy="inverse_sigmoid")
     agent1.train(max_steps=10000)
-    agent = DoubleQLearningAgent(env,epsilon=0.1, epsilon_min=0.01, episodes=200,epsilon_strategy="fixed")
+    agent = DoubleQLearningAgent(env,epsilon=1, epsilon_min=0.01, episodes=200000,epsilon_strategy="inverse_sigmoid")
     agent.train()
 
 
@@ -126,6 +128,15 @@ if __name__ == '__main__':
     lines_dict = {
         'DoubleQLearningAgent': [agent.plotter.moving_avg_graph.xData, agent.plotter.moving_avg_graph.yData],
         'QLearningAgent': [agent1.plotter.moving_avg_graph.xData, agent1.plotter.moving_avg_graph.yData],
+
+    }
+    plot_line_dict(lines_dict)
+    n=100
+    lines_dict = {
+        'DoubleQLearningAgent': [[x for x in range(0,len([sum(agent.plotter.action_values[('A',"left")][i:i + n]) for i in range(0, len(agent.plotter.action_values[('A',"left")]), n)]))]
+            ,[sum(agent.plotter.action_values[('A',"left")][i:i + n])/n for i in range(0, len(agent.plotter.action_values[('A',"left")]), n)]],
+        'QLearningAgent': [[x for x in range(0,len([sum(agent1.plotter.action_values[('A',"left")][i:i + n]) for i in range(0, len(agent1.plotter.action_values[('A',"left")]), n)]))],
+                           [sum(agent1.plotter.action_values[('A',"left")][i:i + n])/n for i in range(0, len(agent1.plotter.action_values[('A',"left")]), n)]]
 
     }
     plot_line_dict(lines_dict)

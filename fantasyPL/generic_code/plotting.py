@@ -41,13 +41,13 @@ class TrainingPlotter2:
         self.ax2 = self.win.addPlot(title="Epsilon")
         self.epsilon_graph = self.ax2.plot(self.x, self.epsilon_values, pen='r', name='Epsilon')
 
-        self.ax3 =self.win.addPlot(title="Actions")
+        # self.ax3 =self.win.addPlot(title="Actions")
         self.actions_graph ={}
 
         # Legends
         self.ax1.addLegend()
         self.ax2.addLegend()
-        self.ax3.addLegend()
+        # self.ax3.addLegend()
 
         # Timer to update the plot
         self.timer = QtCore.QTimer()
@@ -68,6 +68,7 @@ class TrainingPlotter2:
             policy_score: float
     ):
         """Add new data to the plotter's data lists."""
+        episode = len(self.epsilon_values)-1
         self.y.append(reward)
         self.x.append(self.x[-1] + 1)
         self.epsilon_values.append(epsilon)
@@ -76,7 +77,7 @@ class TrainingPlotter2:
         action_superset = set(list(actions.keys())+list(self.action_values.keys()))
         total_ep_actions = sum(list(actions.values()))
         for action in action_superset:
-            self.action_values[action] = self.action_values.get(action,[]) +[actions.get(action,0)/total_ep_actions]
+            self.action_values[action] = self.action_values.get(action,[0]*(episode)) +[actions.get(action,0)/total_ep_actions]
 
         # Compute moving average
         moving_avg = self.compute_moving_average(self.y, self.moving_average_period)
@@ -91,12 +92,12 @@ class TrainingPlotter2:
         self.policy_score_graph.setData(self.x,replace_nones_with_previous(self.policy_scores))
         self.epsilon_graph.setData(self.x, self.epsilon_values)
 
-        for action in self.action_values:
-            x,y = self.x,[0] * (len(self.x) - len(self.action_values[action]))+self.action_values[action]
-            if action in self.actions_graph:
-                self.actions_graph[action].setData(x,y)
-            else:
-                self.actions_graph[action] = self.ax3.plot(x,y, pen=colours[len(self.actions_graph)%len(colours)], name=action)
+        # for action in self.action_values:
+        #     x,y = self.x,[0] * (len(self.x) - len(self.action_values[action]))+self.action_values[action]
+        #     if action in self.actions_graph:
+        #         self.actions_graph[action].setData(x,y)
+        #     else:
+        #         self.actions_graph[action] = self.ax3.plot(x,y, pen=colours[len(self.actions_graph)%len(colours)], name=action)
 
         # Update annotations
         if len(self.moving_avg_y) > 0:
