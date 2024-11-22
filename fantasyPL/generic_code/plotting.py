@@ -15,13 +15,16 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 colours = ['r', 'g', 'b', 'y', 'c', 'm', 'w', 'k']
 class TrainingPlotter2:
     def __init__(self, moving_average_period: int):
-        self.x = [0]
-        self.y = [0]
-        self.epsilon_values = [0]
-        self.policy_scores = [0]
+        self.x = []
+        self.y = []
+        self.epsilon_values = []
+        self.policy_scores = []
         self.action_values = {}
-        self.moving_avg_y = [0]
+        self.moving_avg_y = []
         self.moving_average_period = moving_average_period
+        # self.ax3 =self.win.addPlot(title="Actions")
+        self.actions_graph = {}
+
 
         # Create a PyQtGraph application
         self.app = QtWidgets.QApplication([])
@@ -41,8 +44,7 @@ class TrainingPlotter2:
         self.ax2 = self.win.addPlot(title="Epsilon")
         self.epsilon_graph = self.ax2.plot(self.x, self.epsilon_values, pen='r', name='Epsilon')
 
-        # self.ax3 =self.win.addPlot(title="Actions")
-        self.actions_graph ={}
+
 
         # Legends
         self.ax1.addLegend()
@@ -51,7 +53,7 @@ class TrainingPlotter2:
 
         # Timer to update the plot
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(lambda: self.refresh_plot(self.x[-1]))  # Pass the episode dynamically
+        self.timer.timeout.connect(lambda: self.refresh_plot(self.x[-1] if len(self.x)>0 else 0))  # Pass the episode dynamically
         self.timer.start(50)  # Update every 50 ms
 
         # Annotations
@@ -70,14 +72,17 @@ class TrainingPlotter2:
         """Add new data to the plotter's data lists."""
         episode = len(self.epsilon_values)-1
         self.y.append(reward)
-        self.x.append(self.x[-1] + 1)
+        self.x.append(len(self.x) + 1)
         self.epsilon_values.append(epsilon)
         self.policy_scores.append(policy_score)
         # all actions that have ever been taken plus any new ones from this episode
-        action_superset = set(list(actions.keys())+list(self.action_values.keys()))
-        total_ep_actions = sum(list(actions.values()))
-        for action in action_superset:
-            self.action_values[action] = self.action_values.get(action,[0]*(episode)) +[actions.get(action,0)/total_ep_actions]
+        # action_superset = set(list(actions.keys())+list(self.action_values.keys()))
+        episode, episode_actions = actions
+        assert episode not in self.action_values
+        self.action_values[episode] =episode_actions
+        # total_ep_actions = sum(list(actions.values()))
+        # for action in action_superset:
+        #     self.action_values[action] = self.action_values.get(action,[0]*(episode)) +[actions.get(action,0)/total_ep_actions]
 
         # Compute moving average
         moving_avg = self.compute_moving_average(self.y, self.moving_average_period)

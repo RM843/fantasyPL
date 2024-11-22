@@ -28,7 +28,7 @@ class MaximizationBiasEnv:
 
         self.use_afterstates = False
         # Define reward distribution from state B
-        self.b_reward_mean = 0.1
+        self.b_reward_mean = -0.1
         self.b_reward_variance = 1.0
 
         # Initialize current state
@@ -120,31 +120,31 @@ class MaximizationBiasEnv:
         """
         print(f"Current State: {self.current_state}")
 
-    def transition_model(self, state, action):
-        """
-        Predict the next state given a state and action without changing the current state.
-
-        Parameters:
-            state (str): The current state.
-            action (int): The action to take.
-
-        Returns:
-            next_state (str): The state resulting from taking the action.
-            reward (float): The expected reward.
-            done (bool): Whether the next state is terminal.
-        """
-        if state == 'A':
-            if action == 'left':  # Left
-                return 'B', 0.0, False
-            elif action == 'right':  # Right
-                return self.terminal_state, 0.0, True
-            else:
-                raise ValueError(f"Invalid action {action} from state 'A'.")
-        elif state == 'B':
-            # Any action leads to terminal with stochastic reward
-            return self.terminal_state, self.b_reward_mean, True  # Expected reward is mean
-        else:
-            return state, 0.0, True  # Terminal state remains terminal
+    # def transition_model(self, state, action):
+    #     """
+    #     Predict the next state given a state and action without changing the current state.
+    #
+    #     Parameters:
+    #         state (str): The current state.
+    #         action (int): The action to take.
+    #
+    #     Returns:
+    #         next_state (str): The state resulting from taking the action.
+    #         reward (float): The expected reward.
+    #         done (bool): Whether the next state is terminal.
+    #     """
+    #     if state == 'A':
+    #         if action == 'left':  # Left
+    #             return 'B', 0.0, False
+    #         elif action == 'right':  # Right
+    #             return self.terminal_state, 0.0, True
+    #         else:
+    #             raise ValueError(f"Invalid action {action} from state 'A'.")
+    #     elif state == 'B':
+    #         # Any action leads to terminal with stochastic reward
+    #         return self.terminal_state,  np.random.normal(self.b_reward_mean, np.sqrt(self.b_reward_variance)), True  # Expected reward is mean
+    #     else:
+    #         return state, 0.0, True  # Terminal state remains terminal
 
 
 class CliffWalkingEnv:

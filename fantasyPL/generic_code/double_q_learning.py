@@ -115,28 +115,46 @@ if __name__ == '__main__':
 
     # Example usage with the CliffWalkingEnv:
     env = MaximizationBiasEnv()
-    env= CliffWalkingEnv()
-    agent1 = QLearningAgent(env, epsilon=1,epsilon_min=0.01, episodes=200000,epsilon_strategy="inverse_sigmoid")
-    agent1.train(max_steps=10000)
-    agent = DoubleQLearningAgent(env,epsilon=1, epsilon_min=0.01, episodes=200000,epsilon_strategy="inverse_sigmoid")
+    # env= CliffWalkingEnv()
+    agent1 = QLearningAgent(env=env, epsilon=0.1,epsilon_min=0.01, episodes=500 ,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
+    agent1.train()
+    agent = DoubleQLearningAgent(env=env,epsilon=0.1, epsilon_min=0.01, episodes=500,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
     agent.train()
 
 
 
 
 
-    lines_dict = {
-        'DoubleQLearningAgent': [agent.plotter.moving_avg_graph.xData, agent.plotter.moving_avg_graph.yData],
-        'QLearningAgent': [agent1.plotter.moving_avg_graph.xData, agent1.plotter.moving_avg_graph.yData],
+    # lines_dict = {
+    #     'DoubleQLearningAgent': [agent.plotter.moving_avg_graph.xData, agent.plotter.moving_avg_graph.yData],
+    #     'QLearningAgent': [agent1.plotter.moving_avg_graph.xData, agent1.plotter.moving_avg_graph.yData],
+    #
+    # }
+    # plot_line_dict(lines_dict)
+    window_size=100
+    left_moves_by_episode = [{k[-1]:v for k,v in x.items()}.get("left",0) for x in agent1.plotter.action_values.values()]
+    left_moving_av =  [(n+window_size,sum(left_moves_by_episode[i:i + window_size]) / window_size) for n,i in
+                      enumerate(range(len(left_moves_by_episode) - window_size + 1))]
 
-    }
-    plot_line_dict(lines_dict)
-    n=100
+    left_moves_by_episode2 = [{k[-1]: v for k, v in x.items()}.get("left", 0) for x in
+                             agent.plotter.action_values.values()]
+    left_moving_av2 = [(n + window_size, sum(left_moves_by_episode2[i:i + window_size]) / window_size) for n, i in
+                      enumerate(range(len(left_moves_by_episode2) - window_size + 1))]
+
+    right_moves_by_episode = [{k[-1]:v for k,v in x.items()}.get("right",0) for x in agent1.plotter.action_values.values()]
+    right_moving_av = [(n+window_size,sum(right_moves_by_episode[i:i + window_size]) / window_size) for n,i in
+                      enumerate(range(len(right_moves_by_episode) - window_size + 1))]
+    rewards_dq = [(n+window_size,sum(agent.plotter.y[i:i + window_size]) / window_size) for n,i in
+                      enumerate(range(len(agent.plotter.y) - window_size + 1))]
+
+    rewards_q = [(n + window_size, sum(agent1.plotter.y[i:i + window_size]) / window_size) for n, i in
+                  enumerate(range(len(agent1.plotter.y) - window_size + 1))]
+   
     lines_dict = {
-        'DoubleQLearningAgent': [[x for x in range(0,len([sum(agent.plotter.action_values[('A',"left")][i:i + n]) for i in range(0, len(agent.plotter.action_values[('A',"left")]), n)]))]
-            ,[sum(agent.plotter.action_values[('A',"left")][i:i + n])/n for i in range(0, len(agent.plotter.action_values[('A',"left")]), n)]],
-        'QLearningAgent': [[x for x in range(0,len([sum(agent1.plotter.action_values[('A',"left")][i:i + n]) for i in range(0, len(agent1.plotter.action_values[('A',"left")]), n)]))],
-                           [sum(agent1.plotter.action_values[('A',"left")][i:i + n])/n for i in range(0, len(agent1.plotter.action_values[('A',"left")]), n)]]
+        'DoubleQLearningAgent': [[x[0] for x in left_moving_av2],[x[1] for x in left_moving_av2]],
+        # 'DoubleQLearningAgentReward': [[x[0] for x in rewards_dq],[x[1] for x in rewards_dq]] ,
+        'QLearningAgent':[[x[0] for x in left_moving_av],[x[1] for x in left_moving_av]],
+        # 'QLearningAgentReward': [[x[0] for x in rewards_q],[x[1] for x in rewards_q]]
 
     }
     plot_line_dict(lines_dict)

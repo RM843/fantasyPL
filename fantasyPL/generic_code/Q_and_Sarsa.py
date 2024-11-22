@@ -26,12 +26,16 @@ class GenericAgent(abc.ABC):
         epsilon_min: float = 0.01,
         moving_average_period: int = 100,
         episodes: int = 100,
-        epsilon_strategy: str ='inverse_sigmoid'
+        epsilon_strategy: str ='inverse_sigmoid',
+            verbose =False,
+            live_plot=True
     ):
         self.env = env  # The environment object
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.episodes = episodes
+        self.verbose = verbose
+        self.live_plot = live_plot
 
         # Initialize EpsilonDecay object
         self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy=epsilon_strategy)
@@ -121,7 +125,7 @@ class GenericAgent(abc.ABC):
         self.plotter.add_data(
             reward=reward,
             epsilon=self.epsilon_decay.epsilon,
-            actions=actions,
+            actions=(episode,actions),
             policy_score=policy_score
         )
 
@@ -269,7 +273,7 @@ class GenericAgent(abc.ABC):
                     reward=total_reward,
                     episode=episode,
                     actions = ep_actions,
-                    show=True,
+                    show=True and self.live_plot,
                     policy_score=policy_score
                 )
                 show = False
@@ -290,11 +294,14 @@ class GenericAgent(abc.ABC):
         # Final plot update
         policy = self.get_policy()
         _, policy_score = self.run_policy(policy)
-        self.plot_rewards(
-            reward=total_reward,
+        self.plotter.refresh_plot(
             episode=episode,
-            show=True,
-            actions=ep_actions,
-            policy_score=policy_score
         )
+        # self.plot_rewards(
+        #     reward=total_reward,
+        #     episode=episode,
+        #     show=True,
+        #     actions=ep_actions,
+        #     policy_score=policy_score
+        # )
         self.plotter.finalize_plot()
