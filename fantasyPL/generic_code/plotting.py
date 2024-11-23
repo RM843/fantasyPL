@@ -14,7 +14,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 colours = ['r', 'g', 'b', 'y', 'c', 'm', 'w', 'k']
 class TrainingPlotter2:
-    def __init__(self, moving_average_period: int):
+    def __init__(self, moving_average_period: int, live_plot):
         self.x = []
         self.y = []
         self.epsilon_values = []
@@ -24,43 +24,43 @@ class TrainingPlotter2:
         self.moving_average_period = moving_average_period
         # self.ax3 =self.win.addPlot(title="Actions")
         self.actions_graph = {}
+        self.live_plot = live_plot
+        if live_plot:
+            # Create a PyQtGraph application
+            self.app = QtWidgets.QApplication([])
+
+            # Set up the main window and plot
+            self.win = pg.GraphicsLayoutWidget(show=True)
+            self.win.setWindowTitle("Training Performance")
+            self.win.resize(1000, 800)
+            # Create plots
+            self.ax1 = self.win.addPlot(title="Total Reward / Policy Score")
+            self.ax1.setLabels(left="Total Reward / Policy Score", bottom="Episodes")
+            self.graph = self.ax1.plot(self.x, self.y, pen='g', name='Rewards')
+            self.moving_avg_graph = self.ax1.plot(self.x, self.moving_avg_y, pen='b', name='Moving Average')
+            self.policy_score_graph = self.ax1.plot(self.x, self.policy_scores, pen='m', name='Policy Score')
+
+            # Secondary axis for epsilon values
+            self.ax2 = self.win.addPlot(title="Epsilon")
+            self.epsilon_graph = self.ax2.plot(self.x, self.epsilon_values, pen='r', name='Epsilon')
 
 
-        # Create a PyQtGraph application
-        self.app = QtWidgets.QApplication([])
 
-        # Set up the main window and plot
-        self.win = pg.GraphicsLayoutWidget(show=True)
-        self.win.setWindowTitle("Training Performance")
-        self.win.resize(1000, 800)
-        # Create plots
-        self.ax1 = self.win.addPlot(title="Total Reward / Policy Score")
-        self.ax1.setLabels(left="Total Reward / Policy Score", bottom="Episodes")
-        self.graph = self.ax1.plot(self.x, self.y, pen='g', name='Rewards')
-        self.moving_avg_graph = self.ax1.plot(self.x, self.moving_avg_y, pen='b', name='Moving Average')
-        self.policy_score_graph = self.ax1.plot(self.x, self.policy_scores, pen='m', name='Policy Score')
+            # Legends
+            self.ax1.addLegend()
+            self.ax2.addLegend()
+            # self.ax3.addLegend()
 
-        # Secondary axis for epsilon values
-        self.ax2 = self.win.addPlot(title="Epsilon")
-        self.epsilon_graph = self.ax2.plot(self.x, self.epsilon_values, pen='r', name='Epsilon')
+            # Timer to update the plot
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect(lambda: self.refresh_plot(self.x[-1] if len(self.x)>0 else 0))  # Pass the episode dynamically
+            self.timer.start(50)  # Update every 50 ms
 
-
-
-        # Legends
-        self.ax1.addLegend()
-        self.ax2.addLegend()
-        # self.ax3.addLegend()
-
-        # Timer to update the plot
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(lambda: self.refresh_plot(self.x[-1] if len(self.x)>0 else 0))  # Pass the episode dynamically
-        self.timer.start(50)  # Update every 50 ms
-
-        # Annotations
-        self.annotation = pg.TextItem('', anchor=(1, 0))
-        self.ax1.addItem(self.annotation)
-        self.policy_annotation = pg.TextItem('', anchor=(1, 0))
-        self.ax1.addItem(self.policy_annotation)
+            # Annotations
+            self.annotation = pg.TextItem('', anchor=(1, 0))
+            self.ax1.addItem(self.annotation)
+            self.policy_annotation = pg.TextItem('', anchor=(1, 0))
+            self.ax1.addItem(self.policy_annotation)
 
     def add_data(
             self,
@@ -92,6 +92,8 @@ class TrainingPlotter2:
         """Refresh the plot with the current data."""
         # Update plot data
         # self.graph.setData(self.x, self.y)
+        if not self.live_plot:
+            return
         self.moving_avg_graph.setData(self.x, self.moving_avg_y)
 
         self.policy_score_graph.setData(self.x,replace_nones_with_previous(self.policy_scores))
@@ -128,6 +130,8 @@ class TrainingPlotter2:
 
     def finalize_plot(self):
         """Finalize the plot after training."""
+        if not self.live_plot:
+            return
         self.timer.stop()
         self.win.close()
         self.app.quit()

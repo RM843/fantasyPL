@@ -35,7 +35,7 @@ class GenericAgent(abc.ABC):
         self.discount_factor = discount_factor
         self.episodes = episodes
         self.verbose = verbose
-        self.live_plot = live_plot
+
 
         # Initialize EpsilonDecay object
         self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy=epsilon_strategy)
@@ -46,7 +46,7 @@ class GenericAgent(abc.ABC):
         self.q_table = QTable()
 
         # Initialize Plotter
-        self.plotter = TrainingPlotter2(self.moving_average_period)
+        self.plotter = TrainingPlotter2(self.moving_average_period,live_plot=live_plot)
 
         # Initialize TimeTracker
         self.time_tracker = TimeTracker()
@@ -273,7 +273,7 @@ class GenericAgent(abc.ABC):
                     reward=total_reward,
                     episode=episode,
                     actions = ep_actions,
-                    show=True and self.live_plot,
+                    show=True,
                     policy_score=policy_score
                 )
                 show = False

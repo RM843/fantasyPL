@@ -8,16 +8,14 @@ from fantasyPL.generic_code.plotting import plot_line_dict
 from fantasyPL.generic_code.q_learning import QLearningAgent
 
 
-def run_experiment(agent_class, params, num_runs):
+def run_experiment(agents):
     """Run multiple instances of an agent and average the results."""
     rewards_list = []
     left_moves_list = []
 
-    agents =[]
-    for i in range(num_runs):
-        agents.append(agent_class(**params))
+
     for agent in agents:
-        gc.collect()
+
         agent.train()
 
         # Track rewards and left moves
@@ -28,8 +26,6 @@ def run_experiment(agent_class, params, num_runs):
         ]
         rewards_list.append(rewards)
         left_moves_list.append(left_moves_by_episode)
-    agent=None
-    agents = None
     # Average the results across runs
     avg_rewards = np.mean(rewards_list, axis=0)
     avg_left_moves = np.mean(left_moves_list, axis=0)
@@ -47,7 +43,7 @@ if __name__ == '__main__':
 
     # Parameters
     env = MaximizationBiasEnv()  # Or CliffWalkingEnv()
-    num_runs = 10  # Number of runs for averaging
+    num_runs = 100  # Number of runs for averaging
     window_size = 100
 
     # Agent parameters
@@ -62,11 +58,11 @@ if __name__ == '__main__':
         "verbose": True,
         'live_plot':False
     }
-
+    q_agents = [QLearningAgent(**agent_params)  for i in range(num_runs)]
+    double_q_agents =   [DoubleQLearningAgent(**agent_params)  for i in range(num_runs)]
     # Run experiments for both agents
-    avg_rewards_q, avg_left_moves_q = run_experiment( QLearningAgent, agent_params, num_runs)
-    gc.collect()
-    avg_rewards_dq, avg_left_moves_dq = run_experiment( DoubleQLearningAgent, agent_params, num_runs)
+    avg_rewards_q, avg_left_moves_q = run_experiment( q_agents)
+    avg_rewards_dq, avg_left_moves_dq = run_experiment(double_q_agents)
 
     # Calculate moving averages
     left_moving_av_q = calculate_moving_average(avg_left_moves_q, window_size)
