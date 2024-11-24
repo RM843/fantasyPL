@@ -12,6 +12,7 @@ class MaximizationBiasEnv:
         self.states = ['A', 'B', 'Terminal']
         self.start_state = 'A'
         self.terminal_state = 'Terminal'
+        left_action_set = {x for x in range(10)}
 
         # Define actions
         self.actions = {
@@ -19,10 +20,9 @@ class MaximizationBiasEnv:
                  'left',  # Action 0: Left
                  'right'  # Action 1: Right
             },
-            'B': {
-                 'Any'  # Action 0 (and others): Any action leads to Terminal with stochastic reward
-                # Additional actions can be added if desired
-            },
+            'B':
+                 left_action_set
+            ,
             'Terminal': {}
         }
 

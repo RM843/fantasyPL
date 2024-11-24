@@ -43,8 +43,8 @@ if __name__ == '__main__':
 
     # Parameters
     env = MaximizationBiasEnv()  # Or CliffWalkingEnv()
-    num_runs = 100  # Number of runs for averaging
-    window_size = 100
+    num_runs = 10000  # Number of runs for averaging
+    window_size = 1
 
     # Agent parameters
     agent_params = {
