@@ -4,9 +4,7 @@ from typing import List
 import numpy as np
 from matplotlib import pyplot as plt
 
-from helper_methods import replace_nones_with_previous
-
-
+from helper_methods import replace_nones_with_previous, trim_tuples
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
@@ -96,7 +94,11 @@ class TrainingPlotter2:
             return
         self.moving_avg_graph.setData(self.x, self.moving_avg_y)
 
-        self.policy_score_graph.setData(self.x,replace_nones_with_previous(self.policy_scores))
+        # dont show incomplete strategies
+        tmp = [(x,y) for x,y in zip(self.x,self.policy_scores)]
+        tmp = trim_tuples(tmp)
+        x,policy_scores = tuple(map(list, zip(*tmp))) if tmp else ([], [])
+        self.policy_score_graph.setData(x,policy_scores)
         self.epsilon_graph.setData(self.x, self.epsilon_values)
 
         # for action in self.action_values:
@@ -111,7 +113,7 @@ class TrainingPlotter2:
             self.annotation.setText(f'Moving Avg: {self.moving_avg_y[-1]:.2f}')
             self.annotation.setPos(self.x[-1], self.moving_avg_y[-1])
 
-        if len(self.policy_scores) > 0:
+        if len([x for x in self.policy_scores if x is not None]) > 0:
             self.policy_annotation.setText(f'Policy Score: {self.policy_scores[-1]:.2f}')
             self.policy_annotation.setPos(self.x[-1], self.policy_scores[-1])
 

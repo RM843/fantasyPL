@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import random
 import abc
@@ -7,8 +7,8 @@ import abc
 from tqdm import tqdm
 
 from fantasyPL.generic_code.epsilion_decay import EpsilonDecay
-from fantasyPL.generic_code.plotting import  TrainingPlotter2
-from fantasyPL.generic_code.q_table import QTable
+from fantasyPL.generic_code.plotting import TrainingPlotter2
+from reinforcement_learning.q_table import QTable
 from fantasyPL.generic_code.timing import TimeTracker
 
 # Constants
@@ -17,28 +17,29 @@ REFRESH_RATE = 5  # How often the plot updates (Seconds)
 
 class GenericAgent(abc.ABC):
     def __init__(
-        self,
-        env: Any,
-        learning_rate: float = 0.1,
-        discount_factor: float = 0.99,
-        epsilon: float = 1.0,
-        epsilon_decay: float = 0.995,
-        epsilon_min: float = 0.01,
-        moving_average_period: int = 100,
-        episodes: int = 100,
-        epsilon_strategy: str ='inverse_sigmoid',
-            verbose =False,
-            live_plot=True
+            self,
+            env: Any,
+            learning_rate: float = 0.1,
+            discount_factor: float = 0.99,
+            epsilon: float = 1.0,
+            epsilon_decay: float = 0.995,
+            epsilon_min: float = 0.01,
+            moving_average_period: int = 100,
+            episodes: int = 100,
+            epsilon_strategy: str = 'inverse_sigmoid',
+            verbose=False,
+            live_plot=True,
+            use_afterstates_if_available=True
     ):
         self.env = env  # The environment object
-        self.learning_rate = learning_rate
+        self.learning_rate = learning_rate  # available
         self.discount_factor = discount_factor
         self.episodes = episodes
         self.verbose = verbose
-
+        self.use_afterstates_if_available = use_afterstates_if_available if self.env.use_afterstates else False
 
         # Initialize EpsilonDecay object
-        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes,strategy=epsilon_strategy)
+        self.epsilon_decay = EpsilonDecay(epsilon, epsilon_decay, epsilon_min, episodes, strategy=epsilon_strategy)
 
         self.moving_average_period = moving_average_period  # Period for moving average
 
@@ -46,7 +47,7 @@ class GenericAgent(abc.ABC):
         self.q_table = QTable()
 
         # Initialize Plotter
-        self.plotter = TrainingPlotter2(self.moving_average_period,live_plot=live_plot)
+        self.plotter = TrainingPlotter2(self.moving_average_period, live_plot=live_plot)
 
         # Initialize TimeTracker
         self.time_tracker = TimeTracker()
@@ -71,7 +72,7 @@ class GenericAgent(abc.ABC):
         from the single Q-table.
         """
 
-        return self.q_table.get_q_values(state=state,env=self.env)
+        return self.q_table.get_q_values(state=state, env=self.env)
 
     def choose_action_based_on_policy(self, state: Any) -> Any:
         """
@@ -93,7 +94,6 @@ class GenericAgent(abc.ABC):
         self.time_tracker.add_time('action_selection', end_time - start_time)
         return action
 
-
     def _best_action(self, state: Any, allowed_actions=None) -> Any:
         """
         Determine the best action based on the Q-values for the given state.
@@ -111,13 +111,14 @@ class GenericAgent(abc.ABC):
             if allowed_actions is None:
                 allowed_actions = self.env.get_allowed_actions(state)
             random.choice(allowed_actions)
+
     def plot_rewards(
-        self,
-        reward: float,
-        episode: int,
-        actions: dict,
-        show: bool,
-        policy_score: float
+            self,
+            reward: float,
+            episode: int,
+            actions: dict,
+            show: bool,
+            policy_score: float
     ):
         """Plot the list of rewards per episode with a moving average line, policy score,"""
         start_time = time.time()
@@ -125,7 +126,7 @@ class GenericAgent(abc.ABC):
         self.plotter.add_data(
             reward=reward,
             epsilon=self.epsilon_decay.epsilon,
-            actions=(episode,actions),
+            actions=(episode, actions),
             policy_score=policy_score
         )
 
@@ -137,13 +138,12 @@ class GenericAgent(abc.ABC):
 
         self.time_tracker.add_time('plotting', time.time() - start_time)
 
-
     def get_policy(self) -> Dict[Any, Any]:
         """Get the current policy from the Q-table."""
         policy = {}
         for state in self.q_table.q_table:
 
-            if self.env.use_afterstates:
+            if self.use_afterstates_if_available:
                 state_rep_to_use = state
 
             else:
@@ -198,16 +198,17 @@ class GenericAgent(abc.ABC):
 
         # self.q_table.initialize_q_value(next_state)
         self.validate_action(state, action)
-        state_rep_to_use = self._get_state(state,action)
+        state_rep_to_use = self._get_state(state, action)
         self.q_table.initialize_q_value(state_rep_to_use)
         return state_rep_to_use
-    def _get_state(self,state,action,q_table=None):
+
+    def _get_state(self, state, action, q_table=None):
         if q_table is None:
-            q_table=self.q_table
-        if self.env.use_afterstates:
+            q_table = self.q_table
+        if self.use_afterstates_if_available:
             return q_table.afterstate(self.env, state, action)
         else:
-            return (state,action)
+            return (state, action)
 
     def _update(self, state_rep_to_use: Any, td_target: float, q_table=None):
         """Update the Q-value based on the TD target."""
@@ -216,6 +217,7 @@ class GenericAgent(abc.ABC):
         td_error = td_target - q_table.get_q_value(state_rep_to_use)
         new_q_value = q_table.get_q_value(state_rep_to_use) + self.learning_rate * td_error
         q_table.set_q_value(state_rep_to_use, new_q_value)
+
     def run_policy(self, policy: Dict[Any, Any]) -> Tuple[List[Dict[str, Any]], float]:
         """Run a policy and return the strategy and total reward."""
         state = self.env.reset()
@@ -233,8 +235,9 @@ class GenericAgent(abc.ABC):
             end_time = time.time()
             self.time_tracker.add_time('environment_step', end_time - start_time)
 
+            # in case we are stuck in loop, may have to change this for different environments
             if next_state in [x["state"] for x in strategy]:
-                return None,None
+                return None, None
 
             strategy.append({"state": state, "action": action, "value": reward})
             total_reward += reward
@@ -246,18 +249,19 @@ class GenericAgent(abc.ABC):
         return strategy, total_reward
 
     @abc.abstractmethod
-    def learn_episode(self,max_steps):
+    def learn_episode(self, max_steps):
         pass
+
     def train(
-        self,
-        max_steps: int = 100,
-        sarsa: bool = False
-    ): 
+            self,
+            max_steps: int = 100,
+            sarsa: bool = False
+    ):
         """Train the agent for a specified number of episodes."""
         start_time = time.time()
         show = True
         for episode in tqdm(range(self.episodes)):
-            total_reward,ep_actions = self.learn_episode(max_steps=max_steps)
+            total_reward, ep_actions = self.learn_episode(max_steps=max_steps)
 
             # Determine if it's time to show the plot
             if time.time() - start_time > REFRESH_RATE:
@@ -272,7 +276,7 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
-                    actions = ep_actions,
+                    actions=ep_actions,
                     show=True,
                     policy_score=policy_score
                 )
@@ -283,11 +287,10 @@ class GenericAgent(abc.ABC):
                 self.plot_rewards(
                     reward=total_reward,
                     episode=episode,
-                    actions = ep_actions,
+                    actions=ep_actions,
                     show=False,
                     policy_score=last_policy_score
                 )
-
 
         # Print time breakdown after training is complete
         self.print_time_breakdown()

@@ -1,7 +1,5 @@
 import numpy as np
 
-from fantasyPL.generic_code.reinforment_learning import INITIAL_STATE
-
 
 # Define a simple environment with deterministic transitions
 # For simplicity, let's assume there are 5 states and

@@ -1,10 +1,8 @@
-import statistics
-
-from fantasyPL.generic_code.binary_tree import make_binary_tree, Node
+from fantasyPL.generic_code.binary_tree import Node
 from  fantasyPL.generic_code.monte_carlo_ts import MCTS
 import argparse
 
-from fantasyPL.generic_code.reinforment_learning import INITIAL_STATE
+from reinforcement_learning.reinforment_learning import INITIAL_STATE
 from helper_methods import timing_decorator
 
 

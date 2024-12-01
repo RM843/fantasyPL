@@ -5,6 +5,18 @@ from itertools import combinations
 import time
 from functools import wraps
 
+
+def trim_tuples(lst):
+    trimmed = []
+    found_non_none = False
+
+    for item in lst:
+        if not found_non_none and item[1] is None:
+            continue
+        found_non_none = True
+        trimmed.append(item)
+
+    return trimmed
 def replace_nones_with_previous(lst):
     last_value = None
     for i, val in enumerate(lst):

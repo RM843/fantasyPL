@@ -1,8 +1,6 @@
-from itertools import product
-
 from tqdm import tqdm
 
-from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration
+from reinforcement_learning.reinforment_learning import PolicyOrValueIteration
 
 
 class ValueIteration(PolicyOrValueIteration):

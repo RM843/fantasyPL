@@ -4,7 +4,7 @@ import math
 from typing import List, Any, Dict
 
 from fantasyPL.generic_code.binary_tree import Node
-from fantasyPL.generic_code.reinforment_learning import PolicyOrValueIteration, INITIAL_STATE
+from reinforcement_learning.reinforment_learning import PolicyOrValueIteration, INITIAL_STATE
 from helper_methods import timing_decorator
 
 

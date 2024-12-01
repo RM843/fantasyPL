@@ -1,19 +1,11 @@
-import random
-from typing import Dict, Any, Optional
-
-
-from fantasyPL.generic_code.Q_and_Sarsa import GenericAgent, REFRESH_RATE
-from fantasyPL.generic_code.envs import SelectorGameMini, CliffWalkingEnv, MaximizationBiasEnv
+from fantasyPL.generic_code.envs import SelectorGameMini
 from fantasyPL.generic_code.plotting import plot_line_dict
 from fantasyPL.generic_code.q_learning import QLearningAgent
-from fantasyPL.generic_code.q_table import QTable
 from helper_methods import print_list_of_dicts
 
-
-import numpy as np
 import random
-from typing import Any, Dict, Optional, Tuple, List
-from fantasyPL.generic_code.q_table import QTable
+from typing import Any, Dict, Optional
+from reinforcement_learning.q_table import QTable
 
 
 class DoubleQLearningAgent(QLearningAgent):
@@ -114,50 +106,24 @@ if __name__ == '__main__':
 
 
     # Example usage with the CliffWalkingEnv:
-    env = MaximizationBiasEnv()
+    # env = MaximizationBiasEnv()
     # env= CliffWalkingEnv()
-    agent1 = QLearningAgent(env=env, epsilon=0.1,epsilon_min=0.01, episodes=500 ,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
+    agent1 = QLearningAgent(env=env, epsilon=0.1,epsilon_min=0.01, episodes=5000 ,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
     agent1.train()
-    agent = DoubleQLearningAgent(env=env,epsilon=0.1, epsilon_min=0.01, episodes=500,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
+    agent = DoubleQLearningAgent(env=env,epsilon=0.1, epsilon_min=0.01, episodes=5000,learning_rate=0.1,discount_factor=1,epsilon_strategy="fixed",verbose=True)
     agent.train()
 
 
 
 
 
-    # lines_dict = {
-    #     'DoubleQLearningAgent': [agent.plotter.moving_avg_graph.xData, agent.plotter.moving_avg_graph.yData],
-    #     'QLearningAgent': [agent1.plotter.moving_avg_graph.xData, agent1.plotter.moving_avg_graph.yData],
-    #
-    # }
-    # plot_line_dict(lines_dict)
-    window_size=100
-    left_moves_by_episode = [{k[-1]:v for k,v in x.items()}.get("left",0) for x in agent1.plotter.action_values.values()]
-    left_moving_av =  [(n+window_size,sum(left_moves_by_episode[i:i + window_size]) / window_size) for n,i in
-                      enumerate(range(len(left_moves_by_episode) - window_size + 1))]
-
-    left_moves_by_episode2 = [{k[-1]: v for k, v in x.items()}.get("left", 0) for x in
-                             agent.plotter.action_values.values()]
-    left_moving_av2 = [(n + window_size, sum(left_moves_by_episode2[i:i + window_size]) / window_size) for n, i in
-                      enumerate(range(len(left_moves_by_episode2) - window_size + 1))]
-
-    right_moves_by_episode = [{k[-1]:v for k,v in x.items()}.get("right",0) for x in agent1.plotter.action_values.values()]
-    right_moving_av = [(n+window_size,sum(right_moves_by_episode[i:i + window_size]) / window_size) for n,i in
-                      enumerate(range(len(right_moves_by_episode) - window_size + 1))]
-    rewards_dq = [(n+window_size,sum(agent.plotter.y[i:i + window_size]) / window_size) for n,i in
-                      enumerate(range(len(agent.plotter.y) - window_size + 1))]
-
-    rewards_q = [(n + window_size, sum(agent1.plotter.y[i:i + window_size]) / window_size) for n, i in
-                  enumerate(range(len(agent1.plotter.y) - window_size + 1))]
-   
     lines_dict = {
-        'DoubleQLearningAgent': [[x[0] for x in left_moving_av2],[x[1] for x in left_moving_av2]],
-        # 'DoubleQLearningAgentReward': [[x[0] for x in rewards_dq],[x[1] for x in rewards_dq]] ,
-        'QLearningAgent':[[x[0] for x in left_moving_av],[x[1] for x in left_moving_av]],
-        # 'QLearningAgentReward': [[x[0] for x in rewards_q],[x[1] for x in rewards_q]]
+        'DoubleQLearningAgent': [agent.plotter.moving_avg_graph.xData, agent.plotter.moving_avg_graph.yData],
+        'QLearningAgent': [agent1.plotter.moving_avg_graph.xData, agent1.plotter.moving_avg_graph.yData],
 
     }
     plot_line_dict(lines_dict)
+
     q_strat, value = agent.run_policy(policy=agent.get_policy())
     print_list_of_dicts(q_strat)
     print(f"Total Reward = {value}")
