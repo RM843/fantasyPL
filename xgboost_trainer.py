@@ -125,7 +125,7 @@ def _get_folds(no_folds, df):
     return folds_list
 
 
-def get_xgboost_model(df,features,target,seed=42,no_folds=3):
+def get_xgboost_model(df,features,target,seed=42,no_folds=3,objective='reg:squarederror'):
     """
     Main function to execute the XGBoost linear regression pipeline.
 
@@ -156,7 +156,7 @@ def get_xgboost_model(df,features,target,seed=42,no_folds=3):
     # }
 
     # Train model
-    model = train_xgboost_model(dtrain=dtrain,dtest=dtest,objective='reg:squarederror')
+    model = train_xgboost_model(dtrain=dtrain,dtest=dtest,objective=objective)
 
     # Predict
     y_pred = predict(model=model,dtest= dtest)
