@@ -35,9 +35,7 @@ def run_r_script(script_path, method_name, **kwargs):
 
     except FileNotFoundError:
         raise FileNotFoundError("Rscript executable not found. Ensure R is installed and added to PATH.")
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while running the R script: {e}")
-        return None
+
 
 
 def run_method_and_load_csv(r_script, method_name, **kwargs):
@@ -78,25 +76,31 @@ def run_method_and_load_csv(r_script, method_name, **kwargs):
 #     non_dom_league_url=NA
 # )
 
-
+def run_r_method(method,**kwargs):
+    r_script_path = "run_method.r"
+    return run_method_and_load_csv(r_script_path, method, **kwargs)
 # Example usage
 if __name__ == "__main__":
     r_script_path = "run_method.r"  # Path to your R script
     method = "fb_match_results"  # Example method name
+    kwargs = dict(
+            country = "'ENG'",         # Country: England
+            gender = "'M'",            # Gender: Male
+            season_end_year = 2023,  # Season ending year
+            tier = "'1st'",            # Tier: Premier League
+            non_dom_league_url="NA"
+        )
+
+    # method="fb_match_lineups"
+    # kwargs = dict(match_url = "https://fbref.com/en/matches/47880eb7/Liverpool-Manchester-City-November-10-2019-Premier-League")
+
+    # method = "example_method"  # Example method name
+    # # Pass keyword arguments
     # kwargs = dict(
-    #         country = "ENG",         # Country: England
-    #         gender = "M",            # Gender: Male
-    #         season_end_year = 2023,  # Season ending year
-    #         tier = "1st",            # Tier: Premier League
-    #         non_dom_league_url=NA
-    #     )
+    # name = "Alice",
+    # number = 10)
 
-    method = "example_method"  # Example method name
-    # Pass keyword arguments
-    name = "Alice"
-    number = 10
-
-    df = run_method_and_load_csv(r_script_path, method, name=name, number=number)
+    df = run_method_and_load_csv(r_script_path, method, **kwargs)
 
     if df is not None:
         print("Dataframe from R script:")
