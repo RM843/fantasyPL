@@ -90,7 +90,7 @@ if __name__ == "__main__":
             tier = "'1st'",            # Tier: Premier League
             non_dom_league_url="NA"
         )
-
+    df = run_r_method(method,**kwargs)
     # method="fb_match_lineups"
     # kwargs = dict(match_url = "https://fbref.com/en/matches/47880eb7/Liverpool-Manchester-City-November-10-2019-Premier-League")
 

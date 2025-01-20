@@ -6,6 +6,11 @@ library(worldfootballR)
 
 # Function to handle keyword arguments
 parse_keywords <- function(args) {
+  if (length(args) <= 1) {
+    # If only the method name is passed, return an empty list
+    return(list())
+  }
+
   kw_args <- list()
   for (i in seq(2, length(args), by = 2)) {
     key <- args[i]
@@ -15,12 +20,10 @@ parse_keywords <- function(args) {
     if (value == "NA") {
       value <- NA
     }
-
     kw_args[[key]] <- value
   }
   return(kw_args)
 }
-
 # Extract command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -39,7 +42,7 @@ tryCatch({
   result <- eval(parse(text = func_call))
 
   # Save the result to CSV
-  write.csv(result, "output.csv", row.names = FALSE)
+  write.csv(result, "output.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
   # Print success message
   cat("Success")
