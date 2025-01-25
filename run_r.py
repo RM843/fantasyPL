@@ -50,7 +50,7 @@ def run_method_and_load_csv(r_script, method_name, **kwargs):
     result = run_r_script(r_script, method_name, **kwargs)
 
     if result[-7:] == "Success":
-        print("R script ran successfully. Loading CSV...")
+        # print("R script ran successfully. Loading CSV...")
 
         # Load the resulting CSV into a pandas DataFrame
         df = pd.read_csv("output.csv")

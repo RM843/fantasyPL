@@ -9,3 +9,4 @@ matplotlib==3.9.2
 plotly==5.24.1
 pyqtgraph==0.13.7
 rpy2==3.5.17
+pyreadr==0.5.2
