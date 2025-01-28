@@ -6,6 +6,21 @@ import time
 from functools import wraps
 
 
+def df_to_nested_dict(df, level1, level2):
+    result = {}
+    for _, row in df.iterrows():
+        key1 = row[level1]
+        key2 = row[level2]
+        value = row.drop([level1, level2]).to_dict()
+        key1 = key1+"_"+key2
+        if key1 not in result:
+            result[key1] = []
+
+
+        result[key1].append(value)
+
+    return result
+
 def trim_tuples(lst):
     trimmed = []
     found_non_none = False

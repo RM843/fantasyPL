@@ -5,6 +5,7 @@ import pyreadr
 import requests
 from tqdm import tqdm
 
+from helper_methods import df_to_nested_dict
 from run_r import run_r_method
 
 import os
@@ -159,13 +160,15 @@ def get_match_stats_for_match_urls(match_urls,update=False):
         df = pd.DataFrame()
 
 
-    for match_url in tqdm(match_urls):
-        tmp = get_data_from_match_url_method("fb_team_match_stats", match_url=match_url)
-        df = pd.concat([df,tmp])
-        df.to_csv(file_path, index=False)
-
-    print(f"DataFrame saved to: {file_path}")
+    stats = get_data_from_match_url_method("fb_team_match_stats", match_url=match_urls)
+    lineups = pd.Series(get_lineups_for_match(match_url=match_urls)).to_frame().T
+    df = pd.concat([stats,lineups],axis=1)
     return df
+
+def get_lineups_for_match(match_url):
+    lineups = get_data_from_match_url_method("fb_match_lineups", match_url=match_url)
+    return df_to_nested_dict(lineups[["Home_Away","PlayerURL","Player_Name","Starting","Pos"]],"Starting","Home_Away")
+
 def get_match_shooting_data(country="ENG",tier="1st"):
     assert country in COUNTRY_TO_LEAGUE
     league = COUNTRY_TO_LEAGUE[country]
@@ -205,6 +208,7 @@ def get_match_big_events_data(country="ENG",tier="1st"):
 
 def get_player_match_data(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st"):
    df =  _get_player_match_data(season_from=season_from, season_to=season_to, country=country, tier=tier)
+   lineups = get_data_from_r(" fb_match_lineups", match_url=match_url)
    return df.iloc[:, 21:]
 
 def _get_player_match_data(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st"):
@@ -235,8 +239,11 @@ def get_match_event_data_for_seasons_between_inc(season_from = "2021-2022",seaso
                 df["Season_End_Year"] >= int(season_from[-4:]))]
 
 def get_player_data_for_seasons_between_inc(season_from = "2021-2022",season_to="2022-2023"):
+    """Loading preloaded data"""
     all_player_data=None
+
     for stat_type in tqdm(STAT_TYPES):
+
         df = get_data_from_r("load_fb_big5_advanced_season_stats", stat_type=f"'{stat_type}'", team_or_player="'player'")
         if df.shape[0]==0:
             continue
@@ -300,18 +307,35 @@ def get_match_results(country):
     return get_and_save_df(create_df_function=lambda:_load_match_results(country),
                          file_path=fr"data/worldfootballR/misc/matches_{country}.csv")
 
-def get_match_summary(match_url):
+def get_match_summary(match_url): # NO NEW DATA
     return get_data_from_match_url_method("fb_match_summary", match_url)
 
 def get_data_from_match_url_method(method_name,match_url):
-    return run_r_method(method_name, **dict(match_url=f"'{match_url}'"))
+    file_path = fr"data/worldfootballR/misc/{method_name}.csv"
+    df = pd.DataFrame(columns=["MatchURL"])
+    if os.path.exists(file_path) :
+        df = pd.read_csv(file_path)
+
+    if match_url is str:
+        match_url = [match_url]
+    previously_complete = df["MatchURL"].isin(match_url)
+    if previously_complete.sum()== len(match_url):
+        return df[previously_complete]
+    else:
+        for url in [url for url in match_url if url not in df["MatchURL"].to_list()]:
+            out = run_r_method(method_name, **dict(match_url=f"'{url}'"))
+            out.rename(columns={"Game_URL":"MatchURL"},inplace=True)
+            assert "MatchURL" in out
+            df = pd.concat([df,out])
+            df.to_csv(file_path, index=False)
+
+        return df[df["MatchURL"].isin(match_url)]
 
 
 if __name__ == '__main__':
 
-
     #f"https://github.com/JaseZiv/worldfootballR_data/releases/download/match_results/{country}_match_results.rds", f"https://github.com/JaseZiv/worldfootballR_data/raw/master/data/match_results/{country}_match_results.rds"
-    df = get_match_summary(  match_url="https://fbref.com/en/matches/2df9a3a1/Aston-Villa-Brighton-and-Hove-Albion-September-30-2023-Premier-League")
+    # df = get_match_summary(  match_url="https://fbref.com/en/matches/2df9a3a1/Aston-Villa-Brighton-and-Hove-Albion-September-30-2023-Premier-League")
     match_data = get_match_data_for_seasons_between_inc()
 
     player_match_data = get_player_match_data() # Player match summaries
