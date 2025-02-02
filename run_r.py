@@ -81,7 +81,7 @@ def run_r_method(method,**kwargs):
     return run_method_and_load_csv(r_script_path, method, **kwargs)
 # Example usage
 if __name__ == "__main__":
-    r_script_path = "run_method.r"  # Path to your R script
+    r_script_path = "data_functionality/run_method.r"  # Path to your R script
     method = "fb_match_results"  # Example method name
     kwargs = dict(
             country = "'ENG'",         # Country: England

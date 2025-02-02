@@ -1,14 +1,15 @@
 import tempfile
+import os
+os.environ['R_HOME'] = 'C:\Program Files\R\R-4.4.2'
+
 import rpy2.robjects as ro
 
-import pyreadr
 import requests
 from tqdm import tqdm
 
-from helper_methods import df_to_nested_dict
 from run_r import run_r_method
 
-import os
+
 import pandas as pd
 
 STAT_TYPES = ["standard", "shooting", "passing", "passing_types", "gca", "defense", "possession", "playing_time", "misc", "keepers", "keepers_adv"]
@@ -86,6 +87,25 @@ def get_data_from_rds_file(base_url):
     import pandas as pd
     df = pd.DataFrame(match_results).T
     return df
+
+def fb_advanced_match_stats(season_from ="2021-2022", season_to="2022-2023", country="ENG", tier="1st"):
+    all_player_data=None
+    for stat_type in tqdm(STAT_TYPES):
+        df = get_data_from_r("load_fb_advanced_match_stats",
+                             country = f"'{country}'",
+                             gender = "'M'",
+                             tier = f"'{tier}'",
+                             stat_type=f"'{stat_type}'", team_or_player="'player'")
+        if df.shape[0]==0:
+            continue
+        df["season"] =  (df["Season_End_Year"] -1).astype(str)+"-"+df["Season_End_Year"].astype(str)
+        if all_player_data is None:
+            all_player_data=df
+        else:
+            on =  ["MatchURL","Player_Href"]
+            all_player_data =pd.merge(all_player_data, df[[x for x in df if( x not in all_player_data) or (x in on)]], on=on, how='outer')
+            assert all_player_data[all_player_data.duplicated(subset=on)].shape[0] ==0
+    return all_player_data[(all_player_data["Season_End_Year"]<=int(season_to[-4:]))&(all_player_data["Season_End_Year"]>=int(season_from[-4:]))]
 def get_league_urls_fbref(country,season_from,season_to,tier="1st",gender="M"):
     df = get_and_save_df(create_df_function =lambda: pd.read_csv(r"https://raw.githubusercontent.com/JaseZiv/worldfootballR_data/master/raw-data/all_leages_and_cups/all_competitions.csv"),
                          file_path=fr"data/worldfootballR/misc/leagues.csv")
@@ -128,46 +148,10 @@ def get_teams_for_seasons_between_inc(season_from = "2021-2022",season_to="2022-
         all_seasons = pd.concat([all_seasons,teams])
     return all_seasons
 
-def get_match_data_for_seasons_between_inc(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st",gender="M"):
 
 
-    df = get_match_results(country)
-    df.drop_duplicates(inplace=True)
-    df["Season"] = (df["Season_End_Year"] - 1).astype(str) + "-" + df["Season_End_Year"].astype(str)
-    df = df[(df["Country"] == country) &
-            (df["Gender"] == gender) &
-            (df["Round"] == tier) &
-            (df["Season_End_Year"] <= int(season_to[-4:])) &
-            (df["Season_End_Year"] > int(season_from[:4]))]
-
-    df2 = _get_player_match_data(season_from=season_from, season_to=season_to, country=country, tier=tier).iloc[:,:19].drop_duplicates()
-
-    df = df.merge(df2,on="MatchURL",how="outer")
-    df3 = get_match_stats_for_match_urls(match_urls=list(df["MatchURL"].unique()))
-    return df
-
-# def get_match_stats_for_match_urls(match_urls):
-#     get_and_save_df(create_df_function=lambda:_get_match_stats_for_match_urls(match_urls),
-#                     file_path=fr"data/worldfootballR/fb_team_match_stats/table.csv")
-def get_match_stats_for_match_urls(match_urls,update=False):
-    file_path = fr"data/worldfootballR/fb_team_match_stats/table.csv"
-    # Check if the file exists
-    if os.path.exists(file_path) and not update:
-        print(f"File exists. Loading DataFrame from: {file_path}")
-        df = pd.read_csv(file_path)
-        match_urls = [x for x in match_urls if x not in df["Game_URL"].to_list()]
-    else:
-        df = pd.DataFrame()
 
 
-    stats = get_data_from_match_url_method("fb_team_match_stats", match_url=match_urls)
-    lineups = pd.Series(get_lineups_for_match(match_url=match_urls)).to_frame().T
-    df = pd.concat([stats,lineups],axis=1)
-    return df
-
-def get_lineups_for_match(match_url):
-    lineups = get_data_from_match_url_method("fb_match_lineups", match_url=match_url)
-    return df_to_nested_dict(lineups[["Home_Away","PlayerURL","Player_Name","Starting","Pos"]],"Starting","Home_Away")
 
 def get_match_shooting_data(country="ENG",tier="1st"):
     assert country in COUNTRY_TO_LEAGUE
@@ -211,24 +195,7 @@ def get_player_match_data(season_from = "2021-2022",season_to="2022-2023",countr
    lineups = get_data_from_r(" fb_match_lineups", match_url=match_url)
    return df.iloc[:, 21:]
 
-def _get_player_match_data(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st"):
-    all_player_data=None
-    for stat_type in tqdm(STAT_TYPES):
-        df = get_data_from_r("load_fb_advanced_match_stats",
-                             country = f"'{country}'",
-                             gender = "'M'",
-                             tier = f"'{tier}'",
-                             stat_type=f"'{stat_type}'", team_or_player="'player'")
-        if df.shape[0]==0:
-            continue
-        df["season"] =  (df["Season_End_Year"] -1).astype(str)+"-"+df["Season_End_Year"].astype(str)
-        if all_player_data is None:
-            all_player_data=df
-        else:
-            on =  ["MatchURL","Player_Href"]
-            all_player_data =pd.merge(all_player_data, df[[x for x in df if( x not in all_player_data) or (x in on)]], on=on, how='outer')
-            assert all_player_data[all_player_data.duplicated(subset=on)].shape[0] ==0
-    return all_player_data[(all_player_data["Season_End_Year"]<=int(season_to[-4:]))&(all_player_data["Season_End_Year"]>=int(season_from[-4:]))]
+
 
 def get_match_event_data_for_seasons_between_inc(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st"):
     shooting_events = get_match_shooting_data(country=country,tier=tier)
@@ -291,49 +258,20 @@ def understat_and_fbref_match_mapping(matches):
     return df
 
 
-def _load_match_results(country):
-    base_url = f"https://github.com/JaseZiv/worldfootballR_data/releases/download/match_results/{country}_match_results.rds"
-    df = get_data_from_rds_file(base_url)
-    df.drop(columns=[5], inplace=True)
-    cols = list(get_data_from_r("load_match_results", country=f"'{country}'", gender="'M'", season_end_year=2020,
-                                tier=f"'1st'").columns)
-    df.columns = cols
-    return df
+
 
 def get_team_names_master_list(season_from = "2021-2022",season_to="2022-2023",country="ENG",tier="1st"):
     return list(get_match_data_for_seasons_between_inc(season_from=season_from, season_to=season_to, country=country, tier=tier)["Home"].unique())
 
-def get_match_results(country):
-    return get_and_save_df(create_df_function=lambda:_load_match_results(country),
-                         file_path=fr"data/worldfootballR/misc/matches_{country}.csv")
 
 def get_match_summary(match_url): # NO NEW DATA
     return get_data_from_match_url_method("fb_match_summary", match_url)
 
-def get_data_from_match_url_method(method_name,match_url):
-    file_path = fr"data/worldfootballR/misc/{method_name}.csv"
-    df = pd.DataFrame(columns=["MatchURL"])
-    if os.path.exists(file_path) :
-        df = pd.read_csv(file_path)
 
-    if match_url is str:
-        match_url = [match_url]
-    previously_complete = df["MatchURL"].isin(match_url)
-    if previously_complete.sum()== len(match_url):
-        return df[previously_complete]
-    else:
-        for url in [url for url in match_url if url not in df["MatchURL"].to_list()]:
-            out = run_r_method(method_name, **dict(match_url=f"'{url}'"))
-            out.rename(columns={"Game_URL":"MatchURL"},inplace=True)
-            assert "MatchURL" in out
-            df = pd.concat([df,out])
-            df.to_csv(file_path, index=False)
-
-        return df[df["MatchURL"].isin(match_url)]
 
 
 if __name__ == '__main__':
-
+    print(os.environ['R_HOME'])
     #f"https://github.com/JaseZiv/worldfootballR_data/releases/download/match_results/{country}_match_results.rds", f"https://github.com/JaseZiv/worldfootballR_data/raw/master/data/match_results/{country}_match_results.rds"
     # df = get_match_summary(  match_url="https://fbref.com/en/matches/2df9a3a1/Aston-Villa-Brighton-and-Hove-Albion-September-30-2023-Premier-League")
     match_data = get_match_data_for_seasons_between_inc()
